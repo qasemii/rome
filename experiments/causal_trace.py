@@ -499,7 +499,7 @@ def layername(model, num, kind=None):
         if kind == "embed":
             return "model.embed_tokens"
         if kind == "attn":
-            kind = "attention"
+            kind = "self_attn"
         return f'model.layers.{num}{"" if kind is None else "." + kind}'
     assert False, "unknown transformer structure"
 
