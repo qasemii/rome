@@ -153,6 +153,7 @@ def main(args):
     if args.bnb:
         model = prepare_model_for_kbit_training(model)
     model = get_peft_model(model, peft_config)
+    model.print_trainable_parameters()
     trained_param, total_param = model.get_nb_trainable_parameters()
 
     results_dir = f"experiments/{args.tasks}/classification-sampleFraction-{args.train_sample_fraction}_epochs-{args.epochs}_rank-{args.lora_r}_dropout-{args.dropout}"
