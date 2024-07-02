@@ -456,16 +456,24 @@ class ModelAndTokenizer:
         tokenizer=None,
         low_cpu_mem_usage=False,
         torch_dtype=None,
+        device_map="auto",  # Use device map for efficient memory usage
+        fp16=False,  # Use fp16 for reduced memory usage
     ):
         if tokenizer is None:
             assert model_name is not None
             tokenizer = AutoTokenizer.from_pretrained(model_name)
         if model is None:
             assert model_name is not None
+            model_kwargs = {
+                "low_cpu_mem_usage": low_cpu_mem_usage,
+                "torch_dtype": torch_dtype,
+                "device_map": device_map,
+            }
+            if fp16:
+                model_kwargs["torch_dtype"] = torch.float16  # Use fp16
             model = AutoModelForCausalLM.from_pretrained(
-                model_name, low_cpu_mem_usage=low_cpu_mem_usage, torch_dtype=torch_dtype
+                model_name, **model_kwargs
             )
-            nethook.set_requires_grad(False, model)
             model.eval().cuda()
         self.tokenizer = tokenizer
         self.model = model
