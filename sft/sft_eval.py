@@ -43,6 +43,7 @@ def main(args):
     model.eval()
 
     tokenizer = AutoTokenizer.from_pretrained(peft_model_id)
+    model.generation_config.pad_token_id = tokenizer.pad_token_id #REZA
 
     for task in args.tasks:
         if task == "20_Newsgroups_Fixed":
