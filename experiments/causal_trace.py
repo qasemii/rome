@@ -10,6 +10,7 @@ from datasets import load_dataset
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import AutoPeftModelForCausalLM
 
 from dsets import KnownsDataset
 from rome.tok_dataset import (
@@ -458,6 +459,7 @@ class ModelAndTokenizer:
         torch_dtype=None,
         device_map="auto",  # Use device map for efficient memory usage
         fp16=False,  # Use fp16 for reduced memory usage
+        lora=False,
     ):
         if tokenizer is None:
             assert model_name is not None
@@ -471,10 +473,19 @@ class ModelAndTokenizer:
             }
             if fp16:
                 model_kwargs["torch_dtype"] = torch.float16  # Use fp16
-            model = AutoModelForCausalLM.from_pretrained(
-                model_name, **model_kwargs
-            )
+            if lora:
+                model = AutoPeftModelForCausalLM.from_pretrained(
+                    peft_model_id,
+                    low_cpu_mem_usage=True,
+                    torch_dtype=torch.float16,
+                    load_in_4bit=True if args.bnb else False,
+                )
+            else:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name, **model_kwargs
+                )
             model.eval().cuda()
+
         self.tokenizer = tokenizer
         self.model = model
         self.layer_names = [
@@ -493,9 +504,9 @@ class ModelAndTokenizer:
 
 
 def layername(model, num, kind=None):
-    if hasattr(model, "transformer"):
+    if hasattr(model, "transformer"): # GPT (without LoRA)
         if kind == "embed":
-            return "transformer.wte"
+            return "transformer.wte" #base_model.model.transformer.wte
         return f'transformer.h.{num}{"" if kind is None else "." + kind}'
     if hasattr(model, "gpt_neox"):
         if kind == "embed":
@@ -503,7 +514,7 @@ def layername(model, num, kind=None):
         if kind == "attn":
             kind = "attention"
         return f'gpt_neox.layers.{num}{"" if kind is None else "." + kind}'
-    if hasattr(model, "model"): #for gemma
+    if hasattr(model, "model"): # Gemma
         if kind == "embed":
             return "model.embed_tokens"
         if kind == "attn":
@@ -565,7 +576,8 @@ def plot_trace_heatmap(result, savepdf=None, title=None, xlabel=None, modelname=
             cmap={None: "Purples", "None": "Purples", "mlp": "Greens", "attn": "Reds"}[
                 kind
             ],
-            vmin=low_score,
+            vmin=0,   # vmin=low_score. Setting the minimum value of the color bar to 0
+            vmax=1    # Setting the maximum value of the color bar to 1
         )
         ax.invert_yaxis()
         ax.set_yticks([0.5 + i for i in range(len(differences))])
