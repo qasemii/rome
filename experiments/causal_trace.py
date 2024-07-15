@@ -654,24 +654,27 @@ def find_token_range(tokenizer, token_array, substring):
     return (tok_start, tok_end)
 
 
-def predict_token(mt, prompts, return_p=False):
+def predict_token(mt, prompts, return_p=False, topk=None):
     inp = make_inputs(mt.tokenizer, prompts)
-    preds, p = predict_from_input(mt.model, inp)
-    result = [mt.tokenizer.decode(c) for c in preds]
+    preds, p = predict_from_input(mt.model, inp, topk=topk)
+
+    result = [mt.tokenizer.batch_decode(c) if topk else mt.tokenizer.decode(c) for c in preds]
+
     if return_p:
-        result = (result, p)
+        result = (result[0], p[0]) if topk else (result, p)
+
     return result
 
 
 def predict_from_input(model, inp, topk=None):
-    out = model(**inp)["logits"]
-    probs = torch.softmax(out[:, -1], dim=1)
+    logits = model(**inp)["logits"]
+    probs = torch.softmax(logits[:, -1], dim=1)
 
     if topk:
-        p, preds = torch.sort(probs, dim=1, descending=True)
-        p, preds = p[:, :topk], preds[:, :topk]
+        p, preds = torch.topk(probs, topk, dim=1)
     else:
-        p, preds = torch.max(probs, dim=1)
+        p, preds = torch.max(probs, dim=1, keepdim=True)
+
     return preds, p
 
 
