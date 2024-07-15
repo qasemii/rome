@@ -663,10 +663,15 @@ def predict_token(mt, prompts, return_p=False):
     return result
 
 
-def predict_from_input(model, inp):
+def predict_from_input(model, inp, topk=None):
     out = model(**inp)["logits"]
     probs = torch.softmax(out[:, -1], dim=1)
-    p, preds = torch.max(probs, dim=1)
+
+    if topk:
+        p, preds = torch.sort(probs, dim=1, descending=True)
+        p, preds = p[:, :topk], preds[:, :topk]
+    else:
+        p, preds = torch.max(probs, dim=1)
     return preds, p
 
 
