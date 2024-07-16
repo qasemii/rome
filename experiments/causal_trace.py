@@ -637,7 +637,7 @@ def plot_all_flow(mt,
                   savepdf=None,
                   expect=None,
                   topk=None):
-    for kind in ["mlp", "attn", None]:
+    for kind in [None, "mlp", "attn"]:
         plot_hidden_flow(mt,
                          prompt,
                          subject=subject,
