@@ -307,6 +307,7 @@ def calculate_hidden_flow(
     window=10,
     kind=None,
     expect=None,
+    topk=None
 ):
     """
     Runs causal tracing over every token/layer combination in the network
@@ -314,10 +315,21 @@ def calculate_hidden_flow(
     """
     inp = make_inputs(mt.tokenizer, [prompt] * (samples + 1))
     with torch.no_grad():
-        answer_t, base_score = [d[0] for d in predict_from_input(mt.model, inp)]
+        answers_t, base_scores = [d[0] for d in predict_from_input(mt.model, inp, topk=topk)]
+
+    answers = decode_tokens(mt.tokenizer, answers_t)
+    answers = [a.strip() for a in answers]
+
+    if expect is not None:
+        if not expect in answers:
+            raise ValueError(f"'{expect}' is not in top-{topk} predictions.")
+        index = answers.index(expect)
+        answer_t = answers_t[index]
+        base_score = base_scores[index]
+    else:
+        answer_t = answers_t[0]
+        base_score = base_scores[0]
     [answer] = decode_tokens(mt.tokenizer, [answer_t])
-    if expect is not None and answer.strip() != expect:
-        return dict(correct_prediction=False)
     e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], subject)
     if token_range == "subject_last":
         token_range = [e_range[1] - 1]
@@ -539,6 +551,8 @@ def plot_hidden_flow(
     window=10,
     kind=None,
     savepdf=None,
+    expect=None,
+    topk=None
 ):
     if subject is None:
         subject = guess_subject(prompt)
@@ -551,6 +565,8 @@ def plot_hidden_flow(
         uniform_noise=uniform_noise,
         window=window,
         kind=kind,
+        expect=None,
+        topk=None
     )
     plot_trace_heatmap(result, savepdf)
 
