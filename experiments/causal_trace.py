@@ -670,10 +670,7 @@ def predict_from_input(model, inp, topk=None):
     logits = model(**inp)["logits"]
     probs = torch.softmax(logits[:, -1], dim=1)
 
-    if topk:
-        p, preds = torch.topk(probs, topk, dim=1)
-    else:
-        p, preds = torch.max(probs, dim=1, keepdim=True)
+    p, preds = torch.topk(probs, topk, dim=1) if topk else torch.max(probs, dim=1, keepdim=True)
 
     return preds, p
 
