@@ -321,6 +321,8 @@ def calculate_hidden_flow(
     answers = [a.strip() for a in answers]
 
     if expect is not None:
+        if topk is None:
+            raise ValueError("topk is None.")
         if not expect in answers:
             raise ValueError(f"'{expect}' is not in top-{topk} predictions.")
         index = answers.index(expect)
@@ -625,9 +627,29 @@ def plot_trace_heatmap(result, savepdf=None, title=None, xlabel=None, modelname=
         plt.show()
 
 
-def plot_all_flow(mt, prompt, subject=None):
+def plot_all_flow(mt,
+                  prompt,
+                  subject=None,
+                  samples=10,
+                  noise=0.1,
+                  uniform_noise=False,
+                  window=10,
+                  savepdf=None,
+                  expect=None,
+                  topk=None):
     for kind in ["mlp", "attn", None]:
-        plot_hidden_flow(mt, prompt, subject, kind=kind)
+        plot_hidden_flow(mt,
+                         prompt,
+                         subject=subject,
+                         samples=samples,
+                         noise=noise,
+                         uniform_noise=uniform_noise,
+                         window=window,
+                         kind=kind,
+                         savepdf=savepdf,
+                         expect=expect,
+                         topk=topk)
+
 
 
 # Utilities for dealing with tokens
