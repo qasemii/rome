@@ -576,8 +576,8 @@ def plot_trace_heatmap(result, savepdf=None, title=None, xlabel=None, modelname=
             cmap={None: "Purples", "None": "Purples", "mlp": "Greens", "attn": "Reds"}[
                 kind
             ],
-            vmin=0,   # vmin=low_score. Setting the minimum value of the color bar to 0
-            vmax=1    # Setting the maximum value of the color bar to 1
+            vmin=low_score #Setting the minimum value of the color bar to 0
+            # vmax=1    # Setting the maximum value of the color bar to 1
         )
         ax.invert_yaxis()
         ax.set_yticks([0.5 + i for i in range(len(differences))])
