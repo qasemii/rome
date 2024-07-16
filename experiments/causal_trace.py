@@ -329,6 +329,7 @@ def calculate_hidden_flow(
     else:
         answer_t = answers_t[0]
         base_score = base_scores[0]
+
     [answer] = decode_tokens(mt.tokenizer, [answer_t])
     e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], subject)
     if token_range == "subject_last":
@@ -565,8 +566,8 @@ def plot_hidden_flow(
         uniform_noise=uniform_noise,
         window=window,
         kind=kind,
-        expect=None,
-        topk=None
+        expect=expect,
+        topk=topk
     )
     plot_trace_heatmap(result, savepdf)
 
