@@ -574,6 +574,57 @@ def plot_hidden_flow(
     plot_trace_heatmap(result, savepdf)
 
 
+def plot_aggregated_heatmap(result, savepdf=None, modelname=None):
+    differences = torch.sum(result['scores'], axis=1).unsqueeze(dim=0)
+    low_score = result["low_score"]
+    answer = result["answer"].strip()
+    kind = (
+        None
+        if (not result["kind"] or result["kind"] == "None")
+        else str(result["kind"])
+    )
+    window = result.get("window", 10)
+    labels = list(result["input_tokens"])
+    for i in range(*result["subject_range"]):
+        labels[i] = labels[i] + "*"
+
+    fig, ax = plt.subplots(figsize=(len(labels), 0.5), dpi=200)
+    h = ax.pcolor(
+        differences,
+        cmap={None: "Purples", "None": "Purples", "mlp": "Greens", "attn": "Reds"}[
+            kind
+        ],
+        # vmin=low_score #Setting the minimum value of the color bar to 0
+        # vmax=1    # Setting the maximum value of the color bar to 1
+    )
+
+    ax.set_xticks([0.5 + i for i in range(len(labels))])
+    ax.set_xticklabels(labels, rotation=20, ha='center', fontsize=8)  # , position=(0.1, 0))
+
+    ax.yaxis.set_ticks([])
+    ax.yaxis.set_label_position('right')
+    ax.set_ylabel(f"[{answer}]", rotation=0, labelpad=30, va='center')
+
+    scores_formatted = [f'{x.item():.2f}' for x in differences[0]]
+    for i, label in enumerate(scores_formatted):
+        ax.annotate(label, (0.5 + i, 1.0), textcoords="offset points", xytext=(0, -15), ha='center', fontsize=8,
+                    rotation=0)
+
+    if not modelname:
+        modelname = "GPT"
+    if not kind:
+        ax.set_title("Aggregated impact of restoring state after corrupted input", fontsize=10)
+    else:
+        kindname = "MLP" if kind == "mlp" else "Attn"
+        ax.set_title(f"Aggregated impact of restoring {kindname} after corrupted input", fontsize=10)
+
+    if savepdf:
+        os.makedirs(os.path.dirname(savepdf), exist_ok=True)
+        plt.savefig(savepdf, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()
+
 def plot_trace_heatmap(result, savepdf=None, title=None, xlabel=None, modelname=None):
     differences = result["scores"]
     low_score = result["low_score"]
