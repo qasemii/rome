@@ -477,7 +477,7 @@ class ModelAndTokenizer:
         torch_dtype=None,
         device_map="auto",  # Use device map for efficient memory usage
         fp16=False,  # Use fp16 for reduced memory usage
-        lora=False,
+        adapter_name_or_path=None,
     ):
         if tokenizer is None:
             assert model_name is not None
@@ -491,17 +491,14 @@ class ModelAndTokenizer:
             }
             if fp16:
                 model_kwargs["torch_dtype"] = torch.float16  # Use fp16
-            if lora:
-                model = AutoPeftModelForCausalLM.from_pretrained(
-                    peft_model_id,
-                    low_cpu_mem_usage=True,
-                    torch_dtype=torch.float16,
-                    load_in_4bit=True if args.bnb else False,
-                )
-            else:
-                model = AutoModelForCausalLM.from_pretrained(
-                    model_name, **model_kwargs
-                )
+
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name, **model_kwargs
+            )
+
+            if adapter_name_or_path is not None:
+                model.load_adapter(adapter_name_or_path)
+
             model.eval().cuda()
 
         self.tokenizer = tokenizer
