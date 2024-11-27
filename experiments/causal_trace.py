@@ -382,6 +382,7 @@ def calculate_hidden_flow(
         window=window,
         correct_prediction=True,
         kind=kind or "",
+        rank=index if expect else 0
     )
 
 
