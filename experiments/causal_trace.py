@@ -222,8 +222,6 @@ def trace_with_patch(
 
     # We report softmax probabilities for the answers_t token predictions of interest.
     probs = torch.softmax(outputs_exp.logits[1:, -1, :], dim=1).mean(dim=0)
-    rank = torch.sort(probs, descending=True)[1].tolist().index(answers_t)
-    rank = torch.tensor(rank, device='cuda:0', dtype=torch.float16)
     probs = probs[answers_t]
     # If tracing all layers, collect all activations together to return.
     if trace_layers is not None:
@@ -232,7 +230,7 @@ def trace_with_patch(
         )
         return probs, all_traced
 
-    return probs, rank
+    return probs
 
 
 def trace_with_repatch(
@@ -361,7 +359,7 @@ def calculate_hidden_flow(
             token_range=token_range,
         )
     else:
-        differences, ranks = trace_important_window(
+        differences = trace_important_window(
             mt.model,
             mt.num_layers,
             inp,
@@ -386,7 +384,7 @@ def calculate_hidden_flow(
         window=window,
         correct_prediction=True,
         kind=kind or "",
-        rank=rank if expect else 0
+        rank=index if expect else 0
     )
 
 
@@ -439,12 +437,11 @@ def trace_important_window(
 ):
     ntoks = inp["input_ids"].shape[1]
     table = []
-    rank_table = []
 
     if token_range is None:
         token_range = range(ntoks)
     for tnum in token_range:
-        scores, ranks = [], []
+        scores = []
         for layer in range(num_layers):
             layerlist = [
                 (tnum, layername(model, L, kind))
@@ -463,10 +460,8 @@ def trace_important_window(
                 replace=replace,
             )
             scores.append(s)
-            ranks.append(r)
         table.append(torch.stack(scores))
-        rank_table.append(torch.stack(ranks))
-    return torch.stack(table), torch.stack(rank_table)
+    return torch.stack(table)
 
 
 class ModelAndTokenizer:
