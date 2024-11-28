@@ -361,7 +361,7 @@ def calculate_hidden_flow(
             token_range=token_range,
         )
     else:
-        differences = trace_important_window(
+        differences, ranks = trace_important_window(
             mt.model,
             mt.num_layers,
             inp,
@@ -439,11 +439,12 @@ def trace_important_window(
 ):
     ntoks = inp["input_ids"].shape[1]
     table = []
+    rank_table = []
 
     if token_range is None:
         token_range = range(ntoks)
     for tnum in token_range:
-        row = []
+        scores, ranks = [], []
         for layer in range(num_layers):
             layerlist = [
                 (tnum, layername(model, L, kind))
@@ -451,7 +452,7 @@ def trace_important_window(
                     max(0, layer - window // 2), min(num_layers, layer - (-window // 2))
                 )
             ]
-            r = trace_with_patch(
+            s, r = trace_with_patch(
                 model,
                 inp,
                 layerlist,
@@ -461,9 +462,11 @@ def trace_important_window(
                 uniform_noise=uniform_noise,
                 replace=replace,
             )
-            row.append(r)
-        table.append(torch.stack(row))
-    return torch.stack(table)
+            scores.append(s)
+            ranks.append(s)
+        table.append(torch.stack(scores))
+        rank_table.append(torch.stack(ranks))
+    return torch.stack(table), torch.stack(rank_table)
 
 
 class ModelAndTokenizer:
