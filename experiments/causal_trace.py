@@ -222,6 +222,8 @@ def trace_with_patch(
 
     # We report softmax probabilities for the answers_t token predictions of interest.
     probs = torch.softmax(outputs_exp.logits[1:, -1, :], dim=1).mean(dim=0)
+    rank = torch.sort(probs, descending=True)[1].tolist().index(answers_t)
+    rank = torch.tensor(rank)
     probs = probs[answers_t]
     # If tracing all layers, collect all activations together to return.
     if trace_layers is not None:
@@ -230,7 +232,7 @@ def trace_with_patch(
         )
         return probs, all_traced
 
-    return probs
+    return probs, rank
 
 
 def trace_with_repatch(
@@ -384,7 +386,7 @@ def calculate_hidden_flow(
         window=window,
         correct_prediction=True,
         kind=kind or "",
-        rank=index if expect else 0
+        rank=rank if expect else 0
     )
 
 
@@ -407,7 +409,7 @@ def trace_important_states(
     for tnum in token_range:
         row = []
         for layer in range(num_layers):
-            r = trace_with_patch(
+            r, _ = trace_with_patch(
                 model,
                 inp,
                 [(tnum, layername(model, layer))],
@@ -449,7 +451,7 @@ def trace_important_window(
                     max(0, layer - window // 2), min(num_layers, layer - (-window // 2))
                 )
             ]
-            s, r = trace_with_patch(
+            s, _ = trace_with_patch(
                 model,
                 inp,
                 layerlist,
