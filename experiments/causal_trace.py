@@ -223,7 +223,7 @@ def trace_with_patch(
     # We report softmax probabilities for the answers_t token predictions of interest.
     probs = torch.softmax(outputs_exp.logits[1:, -1, :], dim=1).mean(dim=0)
     rank = torch.sort(probs, descending=True)[1].tolist().index(answers_t)
-
+    rank = torch.tensor(rank, device='cuda:0', dtype=torch.float16)
     probs = probs[answers_t]
     # If tracing all layers, collect all activations together to return.
     if trace_layers is not None:
@@ -463,7 +463,7 @@ def trace_important_window(
                 replace=replace,
             )
             scores.append(s)
-            ranks.append(s)
+            ranks.append(r)
         table.append(torch.stack(scores))
         rank_table.append(torch.stack(ranks))
     return torch.stack(table), torch.stack(rank_table)
