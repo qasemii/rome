@@ -349,7 +349,7 @@ def calculate_hidden_flow(
 
     low_score = low_score.item()
     if not kind:
-        differences = trace_important_states(
+        differences, ranks = trace_important_states(
             mt.model,
             mt.num_layers,
             inp,
@@ -361,7 +361,7 @@ def calculate_hidden_flow(
             token_range=token_range,
         )
     else:
-        differences = trace_important_window(
+        differences, ranks = trace_important_window(
             mt.model,
             mt.num_layers,
             inp,
@@ -402,14 +402,15 @@ def trace_important_states(
     token_range=None,
 ):
     ntoks = inp["input_ids"].shape[1]
-    table = []
+    table, rank_table = [], []
 
     if token_range is None:
         token_range = range(ntoks)
     for tnum in token_range:
         row = []
+        rank_row = []
         for layer in range(num_layers):
-            r, _ = trace_with_patch(
+            s, r = trace_with_patch(
                 model,
                 inp,
                 [(tnum, layername(model, layer))],
@@ -419,9 +420,11 @@ def trace_important_states(
                 uniform_noise=uniform_noise,
                 replace=replace,
             )
-            row.append(r)
+            row.append(s)
+            rank_row.append(r)
         table.append(torch.stack(row))
-    return torch.stack(table)
+        rank_table.append(torch.stack(rank_row))
+    return torch.stack(table), torch.stack(rank_table)
 
 
 def trace_important_window(
@@ -438,12 +441,13 @@ def trace_important_window(
     token_range=None,
 ):
     ntoks = inp["input_ids"].shape[1]
-    table = []
+    table, rank_table = [], []
 
     if token_range is None:
         token_range = range(ntoks)
     for tnum in token_range:
-        scores = []
+        row = []
+        rank_row = []
         for layer in range(num_layers):
             layerlist = [
                 (tnum, layername(model, L, kind))
@@ -461,8 +465,10 @@ def trace_important_window(
                 uniform_noise=uniform_noise,
                 replace=replace,
             )
-            scores.append(s)
-        table.append(torch.stack(scores))
+            row.append(s)
+            rank_row.append(r)
+        table.append(torch.stack(row))
+        rank_table.append(torch.stack(rank_row))
     return torch.stack(table)
 
 
