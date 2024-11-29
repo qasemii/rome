@@ -470,7 +470,7 @@ def trace_important_window(
             rank_row.append(r)
         table.append(torch.stack(row))
         rank_table.append(torch.stack(rank_row))
-    return torch.stack(table)
+    return torch.stack(table), torch.stack(rank_table)
 
 
 class ModelAndTokenizer:
