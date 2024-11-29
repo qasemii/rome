@@ -386,7 +386,8 @@ def calculate_hidden_flow(
         window=window,
         correct_prediction=True,
         kind=kind or "",
-        rank=rank if expect else 0
+        low_rank=rank if expect else 0,
+        ranks=ranks
     )
 
 
@@ -455,7 +456,7 @@ def trace_important_window(
                     max(0, layer - window // 2), min(num_layers, layer - (-window // 2))
                 )
             ]
-            s, _ = trace_with_patch(
+            s, r = trace_with_patch(
                 model,
                 inp,
                 layerlist,
