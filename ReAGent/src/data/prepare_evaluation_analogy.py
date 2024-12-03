@@ -76,7 +76,7 @@ with torch.no_grad():
             word_a = analogy_config["a"][pair_idx]
             word_b = analogy_config["b"][pair_idx]
 
-            full_sentence = template.replace("[A]", word_a).replace("[B]", "")
+            full_sentence = template.replace("[A]", word_a).replace("[B]", word_b)
             print(full_sentence)
             full_ids = tokenizer(full_sentence, return_tensors="pt")["input_ids"].cuda()
 
@@ -135,6 +135,8 @@ with torch.no_grad():
                     tokenizer.decode([token_id]) for token_id in full_ids[0]
                 ]
                 full_ids_list = [v.item() for v in full_ids[0]]
+
+                full_sentence = template.replace.replace(word_b, "")
                 data = {
                     "$schema": schema_uri,
                     "id": data_id,
