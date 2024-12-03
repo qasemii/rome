@@ -27,7 +27,7 @@ __pycache__
 .vscode
 .venv
 __pycache__
-data/*
+
 
 ./config/run_eval2.json
 jobs.out
