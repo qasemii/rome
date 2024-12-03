@@ -138,6 +138,7 @@ with torch.no_grad():
                 data = {
                     "$schema": schema_uri,
                     "id": data_id,
+                    'prompt': full_sentence,
                     "text": full_sentence_list,
                     "tokens": full_ids_list,
                     "target": target_pos.item(),
