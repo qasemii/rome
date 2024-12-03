@@ -76,7 +76,7 @@ with torch.no_grad():
             word_a = analogy_config["a"][pair_idx]
             word_b = analogy_config["b"][pair_idx]
 
-            full_sentence = template.replace("[A]", word_a).replace("[B]", word_b)
+            full_sentence = template.replace("[A]", word_a).replace("[B]", "")
             print(full_sentence)
             full_ids = tokenizer(full_sentence, return_tensors="pt")["input_ids"].cuda()
 
