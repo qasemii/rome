@@ -135,7 +135,7 @@ with torch.no_grad():
                     tokenizer.decode([token_id]) for token_id in full_ids[0]
                 ]
                 full_ids_list = [v.item() for v in full_ids[0]]
-                full_sentence = full_sentence.replace(word_a, "")
+                full_sentence = full_sentence.replace(f" {word_a}", "")
                 data = {
                     "$schema": schema_uri,
                     "id": data_id,
