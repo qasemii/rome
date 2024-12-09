@@ -44,7 +44,7 @@ def serialize_rational(
         "input-tokens": [i.item() for i in token_inputs],
         "target-text": tokenizer.decode([token_target]),
         "target-token": token_target.item(),
-        "rational-size": position_rational.shape[0],
+        # "rational-size": position_rational.shape[0],
         "rational-positions": [i.item() for i in position_rational],
         "rational-text": [tokenizer.decode([i]) for i in token_inputs[position_rational]],
         "rational-tokens": [i.item() for i in token_inputs[position_rational]],
