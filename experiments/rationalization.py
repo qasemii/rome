@@ -1,4 +1,53 @@
+%cd /content/rome/
 
+import os, re, json
+import torch, numpy
+from collections import defaultdict
+from util import nethook
+from util.globals import DATA_DIR
+from experiments.causal_trace import (
+    ModelAndTokenizer,
+    layername,
+    guess_subject,
+    plot_trace_heatmap,
+)
+from experiments.causal_trace import (
+    make_inputs,
+    decode_tokens,
+    find_token_range,
+    predict_token,
+    predict_from_input,
+    collect_embedding_std,
+    plot_all_flow,
+
+    trace_with_patch,
+    trace_important_states,
+    trace_important_window,
+    calculate_hidden_flow,
+    plot_aggregated_heatmap,
+    plot_hidden_aggregation,
+    plot_hidden_flow,
+    plot_all_flow
+)
+from dsets import KnownsDataset
+
+import random
+import shutil
+import nltk
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import pickle
+from tqdm import tqdm
+import json
+from datasets import load_dataset
+from pprint import pprint
+
+random.seed(42)
+
+torch.set_grad_enabled(False)
+
+nltk.download('punkt_tab')
 
 def extract_rationales(
     mt,

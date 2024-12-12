@@ -79,6 +79,8 @@ def main():
     aa("--replace", default=0, type=int)
     args = parser.parse_args()
 
+    nltk.download('punkt_tab')
+
     result_dir = f"{args.output_dir}/{args.model_name}"
     os.makedirs(result_dir, exist_ok=True)
 
