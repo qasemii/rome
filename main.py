@@ -1,5 +1,4 @@
-%cd /content/rome/
-
+import argparse
 import os, re, json
 import torch, numpy
 from collections import defaultdict
@@ -29,6 +28,13 @@ from experiments.causal_trace import (
     plot_hidden_flow,
     plot_all_flow
 )
+
+from experiments.rationalization import (
+    extract_rationales,
+    plot_rationales,
+    plot_generation
+)
+
 from dsets import KnownsDataset
 
 import random
@@ -47,6 +53,7 @@ random.seed(42)
 
 torch.set_grad_enabled(False)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Rationalization")
 
@@ -57,9 +64,9 @@ def main():
         "--model_name",
         default="gpt2-medium",
         choices=[
-            "gpt2-xl",
             "EleutherAI/gpt-j-6B",
             "EleutherAI/gpt-neox-20b",
+            "gpt2-xl",
             "gpt2-large",
             "gpt2-medium",
             "gpt2",
@@ -67,19 +74,19 @@ def main():
     )
     aa("--kind", default="mlp", type=str)
     aa("--fact_file", default=None)
-    aa("--output_dir", default="results/{model_name}")
+    aa("--output_dir", default=f"results/")
     aa("--noise_level", default=None, type=float)
     aa("--replace", default=0, type=int)
     args = parser.parse_args()
 
-    result_dir = f"{args.output_dir}/cases"
+    result_dir = f"{args.output_dir}/{args.model_name}"
     os.makedirs(result_dir, exist_ok=True)
 
     mt = ModelAndTokenizer(
-            model_name,
-            low_cpu_mem_usage=True,
-            torch_dtype=torch.float16,
-            adapter_name_or_path=None)
+        args.model_name,
+        low_cpu_mem_usage=True,
+        torch_dtype=torch.float16,
+        adapter_name_or_path=None)
 
     if args.fact_file is None:
         knowns = KnownsDataset(DATA_DIR)
@@ -91,9 +98,9 @@ def main():
 
     if args.model_name == "gpt2":
         base_noise_level = 0.1346435546875
-    if args.model_name == "gpt2-medium":
+    elif args.model_name == "gpt2-medium":
         base_noise_level = 0.10894775390625
-    if args.model_name == "gpt2-large":
+    elif args.model_name == "gpt2-large":
         base_noise_level = 0.053924560546875
     elif args.model_name == "gpt2-xl":
         base_noise_level = 0.0450439453125
@@ -103,10 +110,10 @@ def main():
         raise ValueError
     noise_level = 3 * base_noise_level
 
+    print("Starting rationalization ...")
     for knowledge in tqdm(knowns):
         known_id = knowledge["known_id"]
-        kind_suffix = f"_{kind}" if kind else ""
-        filename = f"{result_dir}/knowledge_{known_id}{kind_suffix}.npz"
+        filename = f"{result_dir}/{known_id}.npz"
         if not os.path.isfile(filename):
             result = extract_rationales(
                 mt,
@@ -114,7 +121,7 @@ def main():
                 knowledge["subject"],
                 expect=knowledge["attribute"],
                 topk=20,
-                kind=kind,
+                kind=args.kind,
                 noise=noise_level,
                 uniform_noise=uniform_noise,
                 replace=args.replace,
@@ -127,6 +134,10 @@ def main():
             numpy.savez(filename, **numpy_result)
         else:
             continue
+
+
+if __name__ == "__main__":
+    main()
 
 
 
