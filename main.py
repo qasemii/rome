@@ -112,8 +112,12 @@ def main():
         raise ValueError
     noise_level = 3 * base_noise_level
 
+    org_true = [i for i, r in enumerate(results) if results[i][0][0].strip() == true_answers[i]]
+    print('Number of True predictions: ', len(org_true))
+
     print("Starting rationalization ...")
-    for knowledge in tqdm(knowns):
+    for idx in tqdm(org_true):
+        knowledge = knowns[idx]
         known_id = knowledge["known_id"]
         filename = f"{result_dir}/{known_id}.npz"
         if not os.path.isfile(filename):
@@ -127,15 +131,18 @@ def main():
                 noise=noise_level,
                 uniform_noise=uniform_noise,
             )
-
-            numpy_result = {
-                k: v.detach().cpu().numpy() if torch.is_tensor(v) else v
-                for k, v in result.items()
-            }
-            numpy.savez(filename, **numpy_result)
+            save(result, filename)
         else:
             continue
 
+def save(data, dir = None):
+    with open(f'{dir}.pkl', 'wb') as file:
+        pickle.dump(data, file)
+
+def load(dir=None):
+    with open(f'{dir}.pkl', 'rb') as file:
+        data = pickle.load(file)
+    return data
 
 if __name__ == "__main__":
     main()
