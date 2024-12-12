@@ -115,7 +115,7 @@ def main():
     predictions = []
     for knowledge in tqdm(knowns):
         p = predict_token(
-            gptmt,
+            mt,
             [knowledge["prompt"]], # original/relevant/irrelevant/counterfact
             return_p=True,
             topk=10
