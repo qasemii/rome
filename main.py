@@ -122,11 +122,11 @@ def main():
         )
         predictions.append(p)
 
-    org_true = [i for i, r in enumerate(results) if results[i][0][0].strip() == true_answers[i]]
+    org_true = [i for i, r in enumerate(predictions) if predictions[i][0][0].strip() == knowns[i]['attribute']]
     print('Number of True predictions: ', len(org_true))
 
     print("Starting rationalization ...")
-    for idx in tqdm(org_true):
+    for idx in tqdm(org_true[:100]):
         knowledge = knowns[idx]
         known_id = knowledge["known_id"]
         filename = f"{result_dir}/{known_id}.npz"
@@ -134,7 +134,6 @@ def main():
             result = extract_rationales(
                 mt,
                 knowledge["prompt"],
-                knowledge["subject"],
                 expect=knowledge["attribute"],
                 topk=20,
                 kind=args.kind,
