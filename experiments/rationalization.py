@@ -1,5 +1,3 @@
-%cd /content/rome/
-
 import os, re, json
 import torch, numpy
 from collections import defaultdict
