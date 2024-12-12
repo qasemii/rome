@@ -124,7 +124,6 @@ def main():
                 kind=args.kind,
                 noise=noise_level,
                 uniform_noise=uniform_noise,
-                replace=args.replace,
             )
 
             numpy_result = {
