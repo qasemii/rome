@@ -112,6 +112,16 @@ def main():
         raise ValueError
     noise_level = 3 * base_noise_level
 
+    predictions = []
+    for knowledge in tqdm(knowns):
+        p = predict_token(
+            gptmt,
+            [knowledge["prompt"]], # original/relevant/irrelevant/counterfact
+            return_p=True,
+            topk=10
+        )
+        predictions.append(p)
+
     org_true = [i for i, r in enumerate(results) if results[i][0][0].strip() == true_answers[i]]
     print('Number of True predictions: ', len(org_true))
 
