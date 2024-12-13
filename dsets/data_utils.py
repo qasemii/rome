@@ -28,16 +28,6 @@ def load(dir=None):
         data = pickle.load(file)
     return data
 
-
-def get_dataset(data_name="knowns"):
-    if data_name=="knowns":
-        dataset = KnownsDataset(DATA_DIR)
-    elif data_name="counterfact":
-        dataset = CounterFactDataset(DATA_DIR)
-    else:
-        raise ValueError
-
-
 def get_predictions(mt, data, topk=10):
     results = []
     for d in tqdm(data):
@@ -50,3 +40,18 @@ def get_predictions(mt, data, topk=10):
         results.append(predictions)
 
     return results
+
+
+def match_tokens_with_scores(mem_ers):
+
+    test = []
+    tokenizer = gptmt.tokenizer
+    scores = mem_ers['scores'].squeeze()
+
+    for i, token in enumerate(mem_ers['input_tokens']):
+        token = f" {token}" if i >= 0 else token  # Adding space if index is valid
+        encoded_token = tokenizer.encode(token)
+        token_length = len(encoded_token)
+        test.extend([scores[i].item()] * token_length)
+
+    return torch.tensor(test).unsqueeze(dim=0)

@@ -19,6 +19,7 @@ from dsets import (
     KnownsDataset,
     CounterFactDataset,
 )
+from dsets.data_utils import match_tokens_with_scores
 
 import random
 import shutil
@@ -223,7 +224,7 @@ def main():
                 uniform_noise=uniform_noise,
             )
             # save(ers, filename)
-            scores = ers['scores'].to(mt.model.device)
+            scores = match_tokens_with_scores(ers['scores']).to(mt.model.device)
         else:
             # rationalization
             rationalizer.rationalize(input_ids.unsqueeze(dim=0), target_id.unsqueeze(dim=0))
@@ -263,10 +264,10 @@ def main():
                         'random_soft_ns': random_soft_ns_step,
                         'random_soft_nc': random_soft_nc_step,}
 
-        # export results
-        result_dir.mkdir(exist_ok=True, parents=True)
-        with open(os.path.join(output_dir, f'results.pkl'), 'w') as outfile:
-            pickle.dump(results, outfile)
+    # export results
+    Path(result_dir).mkdir(exist_ok=True, parents=True)
+    with open(os.path.join(result_dir, f'results.pkl'), 'wb') as outfile:
+        pickle.dump(results, outfile)
 
 
 
