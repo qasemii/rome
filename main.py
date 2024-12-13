@@ -68,7 +68,6 @@ def main():
     aa("--fact_file", default="knowns")
     aa("--output_dir", default=f"results/")
     aa("--noise_level", default=None, type=float)
-    aa("--replace", default=0, type=int)
     aa("--method",
        type=str,
        default="integrated_gradients",
@@ -80,7 +79,7 @@ def main():
 
     nltk.download('averaged_perceptron_tagger_eng')
 
-    result_dir = f"{args.output_dir}/{args.model_name}"
+    result_dir = f"{args.output_dir}/{args.fact_file}/{args.model_name}_{args.method}/"
     os.makedirs(result_dir, exist_ok=True)
 
     print('Loading model and tokenizer ...')
@@ -98,20 +97,6 @@ def main():
         raise ValueError
 
     uniform_noise = False
-
-    if args.model_name == "gpt2":
-        base_noise_level = 0.1346435546875
-    elif args.model_name == "gpt2-medium":
-        base_noise_level = 0.10894775390625
-    elif args.model_name == "gpt2-large":
-        base_noise_level = 0.053924560546875
-    elif args.model_name == "gpt2-xl":
-        base_noise_level = 0.0450439453125
-    elif args.model_name == "EleutherAI/gpt-j-6B":
-        base_noise_level = 0.031341552734375
-    else:
-        raise ValueError
-    noise_level = 3 * base_noise_level
 
     # init rationalizer
     rational_size = 3
@@ -140,6 +125,25 @@ def main():
 
     if args.method == 'membre':
         nltk.download('punkt_tab')
+
+        if args.noise_level is None:
+            if args.model_name == "gpt2":
+                base_noise_level = 0.1346435546875
+            elif args.model_name == "gpt2-medium":
+                base_noise_level = 0.10894775390625
+            elif args.model_name == "gpt2-large":
+                base_noise_level = 0.053924560546875
+            elif args.model_name == "gpt2-xl":
+                base_noise_level = 0.0450439453125
+            elif args.model_name == "EleutherAI/gpt-j-6B":
+                base_noise_level = 0.031341552734375
+            else:
+                raise ValueError, "Please choose the right model for noise_level"
+            noise_level = 3 * base_noise_level
+        else:
+            noise_level = args.noise_level
+
+        kind = args.kind
     elif args.method == 'reagent':
 
         token_sampler = POSTagTokenSampler(tokenizer=tokenizer, device=device)
@@ -201,18 +205,20 @@ def main():
         )
 
     print("Starting rationalization ...")
+    results = {}
     for idx in tqdm(true_predictions_idx[:100]):
+        results[idx] = {}
         data = dataset[idx]
         filename = f"{result_dir}/{data['id']}.pkl"
 
         input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
-        target_id = mt.tokenizer((" "+data["target"]), return_tensors='pt')['input_ids'][0].squeez(dim=0).to(mt.model.device)
+        target_id = mt.tokenizer((" "+data["target"]), return_tensors='pt')['input_ids'][0].squeeze(dim=0).to(mt.model.device)
 
         if args.method == 'membre':
             ers = extract_rationales(
                 mt,
                 data["prompt"],
-                kind=args.kind,
+                kind=kind,
                 noise=noise_level,
                 uniform_noise=uniform_noise,
             )
@@ -250,36 +256,18 @@ def main():
 
         print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
 
-        # # export generated_texts
-        # raw_dumps = json.dumps(raw_dict, indent=4)
-        # with open(os.path.join(output_dir, f'{i}_raw.json'), 'w') as outfile:
-        #     outfile.write(raw_dumps)
-        #
-        # with open(os.path.join(output_dir, f'{i}_output.txt'), 'w') as outfile:
-        #     outfile.writelines(generated_texts)
-        #
-        # with open(os.path.join(output_dir, f'{i}_details.csv'), 'w', newline='') as csvfile:
-        #     csvWriter = csv.writer(csvfile)
-        #     csvWriter.writerows(table_details)
-        #
-        # with open(os.path.join(output_dir, f'{i}_mean.csv'), 'w', newline='') as csvfile:
-        #     csvWriter = csv.writer(csvfile)
-        #     csvWriter.writerows(table_mean)
-        #
-        # if args.if_image:  # export plot
-        #     seaborn.set(rc={'figure.figsize': (30, 10)})
-        #     s = seaborn.heatmap(
-        #         importance_score_map.cpu(),
-        #         xticklabels=generated_texts[:-1],
-        #         yticklabels=generated_texts[input_ids.shape[0]:],
-        #         annot=True,
-        #         square=True)
-        #     s.set_xlabel('Importance distribution')
-        #     s.set_ylabel('Target')
-        #     fig = s.get_figure()
-        #     fig.tight_layout()
-        #     fig.savefig(os.path.join(output_dir, f'{i}_dist.png'))
-        #     fig.clf()
+
+        results[idx] = {'scores': scores,
+                        'source_soft_ns': source_soft_ns_step,
+                        'source_soft_nc': source_soft_nc_step,
+                        'random_soft_ns': random_soft_ns_step,
+                        'random_soft_nc': random_soft_nc_step,}
+
+        # export results
+        result_dir.mkdir(exist_ok=True, parents=True)
+        with open(os.path.join(output_dir, f'results.pkl'), 'w') as outfile:
+            pickle.dump(results, outfile)
+
 
 
 if __name__ == "__main__":
