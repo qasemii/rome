@@ -30,7 +30,8 @@ import pickle
 from tqdm import tqdm
 
 from ReAGent.src.rationalization.rationalizer.aggregate_rationalizer import AggregateRationalizer
-from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.delta_prob import DeltaProbImportanceScoreEvaluator
+from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.delta_prob import \
+    DeltaProbImportanceScoreEvaluator
 from ReAGent.src.rationalization.rationalizer.stopping_condition_evaluator.top_k import TopKStoppingConditionEvaluator
 from ReAGent.src.rationalization.rationalizer.token_replacement.token_replacer.uniform import UniformTokenReplacer
 from ReAGent.src.rationalization.rationalizer.token_replacement.token_sampler.postag import POSTagTokenSampler
@@ -69,9 +70,9 @@ def main():
     aa("--noise_level", default=None, type=float)
     aa("--replace", default=0, type=int)
     aa("--method",
-        type=str,
-        default="integrated_gradients",
-        help="membre, reagent, \
+       type=str,
+       default="integrated_gradients",
+       help="membre, reagent, \
         attention, attention_last, attention_rollout, \
         gradient_shap,  integrated_gradients,  input_x_gradient norm ")  # TODO
 
@@ -89,10 +90,9 @@ def main():
         torch_dtype=torch.float16,
         adapter_name_or_path=None)
 
-
-    if args.fact_file=="knowns":
+    if args.fact_file == "knowns":
         dataset = KnownsDataset(DATA_DIR)
-    elif args.fact_file=="counterfact":
+    elif args.fact_file == "counterfact":
         dataset = CounterFactDataset(DATA_DIR)
     else:
         raise ValueError
@@ -128,13 +128,14 @@ def main():
     for data in tqdm(dataset):
         p = predict_token(
             mt,
-            [data["prompt"]], # original/relevant/irrelevant/counterfact
+            [data["prompt"]],  # original/relevant/irrelevant/counterfact
             return_p=True,
             topk=10
         )
         predictions.append(p)
 
-    true_predictions_idx = [i for i, r in enumerate(predictions) if predictions[i][0][0].strip() == dataset[i]['target']]
+    true_predictions_idx = [i for i, r in enumerate(predictions) if
+                            predictions[i][0][0].strip() == dataset[i]['target']]
     print(f"Number of True predictions: {len(true_predictions_idx)}/{len(dataset)}")
 
     if args.method == 'membre':
@@ -170,7 +171,8 @@ def main():
             top_n_ratio=rational_size_ratio
         )
     elif args.method == 'attention_last' or args.method == 'attention_rollout':
-        from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.attention import AttentionImportanceScoreEvaluator
+        from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.attention import \
+            AttentionImportanceScoreEvaluator
         importance_score_evaluator = AttentionImportanceScoreEvaluator(
             model=mt.model,
             tokenizer=mt.tokenizer,
@@ -183,7 +185,8 @@ def main():
         )
     else:
         # assert args.method in ['integrated_gradients', 'input_x_gradient', 'attention', 'gradient_shap'] # input_x_gradient = signed in self written
-        from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.inseq import InseqImportanceScoreEvaluator
+        from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.inseq import \
+            InseqImportanceScoreEvaluator
         importance_score_evaluator = InseqImportanceScoreEvaluator(
             model=mt.model,
             tokenizer=mt.tokenizer,
@@ -198,16 +201,17 @@ def main():
         )
 
     # init evaluator
-    soft_norm_suff_evaluator = SoftNormalizedSufficiencyEvaluator(model)
-    soft_norm_comp_evaluator = SoftNormalizedComprehensivenessEvaluator(model)
+    soft_norm_suff_evaluator = SoftNormalizedSufficiencyEvaluator(mt.model)
+    soft_norm_comp_evaluator = SoftNormalizedComprehensivenessEvaluator(mt.model)
 
     print("Starting rationalization ...")
-    for idx in tqdm(org_true[:100]):
+    for idx in tqdm(true_predictions_idx[:100]):
         data = dataset[idx]
         filename = f"{result_dir}/{data['id']}.pkl"
 
         input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
-        target_id = mt.tokenizer(data["target"], return_tensors='pt')['input_ids'][0].to(mt.model.device).unsqueeze(dim=0)
+        target_id = mt.tokenizer(data["target"], return_tensors='pt')['input_ids'][0].to(mt.model.device).unsqueeze(
+            dim=0)
 
         if args.method == 'membre':
             ers = extract_rationales(
@@ -217,7 +221,7 @@ def main():
                 noise=noise_level,
                 uniform_noise=uniform_noise,
             )
-            save(ers, filename)
+            # save(ers, filename)
             scores = ers['scores']
         else:
             # rationalization
@@ -228,7 +232,7 @@ def main():
         target_id_step = torch.unsqueeze(target_id, 0)
 
         # importance score by Random Score
-        random_scores = torch.softmax(torch.rand(scores.shape, device=gptmt.model.device), dim=-1)
+        random_scores = torch.softmax(torch.rand(scores.shape, device=mt.model.device), dim=-1)
 
         # compute Soft-NS and Soft-NC on source importance score
         source_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, scores)
@@ -246,8 +250,6 @@ def main():
         metric_soft_nc = torch.log(source_soft_nc_step / random_soft_nc_step)
 
         print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
-
-
 
         # # export generated_texts
         # raw_dumps = json.dumps(raw_dict, indent=4)
@@ -279,6 +281,7 @@ def main():
         #     fig.tight_layout()
         #     fig.savefig(os.path.join(output_dir, f'{i}_dist.png'))
         #     fig.clf()
+
 
 if __name__ == "__main__":
     main()
