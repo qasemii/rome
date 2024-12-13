@@ -32,4 +32,9 @@ class CounterFactDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, item):
+        self.data[item]['id'] = self.data[item].pop('case_id')
+        self.data[item]['subject'] = self.data[item]["requested_rewrite"]['subject']
+        self.data[item]['prompt'] = self.data[item]["requested_rewrite"]["prompt"].replace("{}", self.data[item]['subject'])
+        self.data[item]['target'] = self.data[item]["requested_rewrite"]["target_true"]["str"]
+
         return self.data[item]

@@ -28,4 +28,7 @@ class KnownsDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, item):
+        self.data[item]['id'] = self.data[item].pop('known_id')
+        self.data[item]['target'] = self.data[item].pop('attribute')
+
         return self.data[item]
