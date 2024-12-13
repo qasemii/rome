@@ -48,7 +48,8 @@ def match_tokens_with_scores(mt, mem_ers):
     scores = mem_ers['scores'].squeeze()
 
     for i, token in enumerate(mem_ers['input_tokens']):
-        token = f" {token}" if i > 0 else token  # Adding space if index is valid
+        if i == 0:
+            token = " " + token  # Adding space if index is valid
         encoded_token = mt.tokenizer.encode(token)
         token_length = len(encoded_token)
         test.extend([scores[i].item()] * token_length)
