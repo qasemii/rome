@@ -245,29 +245,30 @@ def main():
 
         # importance score by Random Score
         # random_scores = torch.softmax(torch.rand(scores.shape, device=mt.model.device), dim=-1)
+        try:
+            # compute Soft-NS and Soft-NC on source importance score
+            source_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, scores)
+            source_soft_nc_step = soft_norm_comp_evaluator.evaluate(input_ids_step, target_id_step, scores)
+            print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
 
-        # compute Soft-NS and Soft-NC on source importance score
-        source_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, scores)
-        source_soft_nc_step = soft_norm_comp_evaluator.evaluate(input_ids_step, target_id_step, scores)
-        print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
+            # # compute Soft-NS and Soft-NC on random importance score
+            # random_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
+            # random_soft_nc_step = soft_norm_comp_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
+            # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
 
-        # # compute Soft-NS and Soft-NC on random importance score
-        # random_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
-        # random_soft_nc_step = soft_norm_comp_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
-        # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
-
-        # # compute metrics on Soft-NS and Soft-NC
-        # metric_soft_ns = torch.log(source_soft_ns_step / random_soft_ns_step)
-        # metric_soft_nc = torch.log(source_soft_nc_step / random_soft_nc_step)
-        # print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
+            # # compute metrics on Soft-NS and Soft-NC
+            # metric_soft_ns = torch.log(source_soft_ns_step / random_soft_ns_step)
+            # metric_soft_nc = torch.log(source_soft_nc_step / random_soft_nc_step)
+            # print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
 
 
-        results[idx] = {'scores': scores.squeeze(),
-                        'source_soft_ns': source_soft_ns_step.item(),
-                        'source_soft_nc': source_soft_nc_step.item(),}
-                        # 'random_soft_ns': random_soft_ns_step.item(),
-                        # 'random_soft_nc': random_soft_nc_step.item(),}
-
+            results[idx] = {'scores': scores.squeeze(),
+                            'source_soft_ns': source_soft_ns_step.item(),
+                            'source_soft_nc': source_soft_nc_step.item(),}
+                            # 'random_soft_ns': random_soft_ns_step.item(),
+                            # 'random_soft_nc': random_soft_nc_step.item(),}
+        except:
+            continue
     # export results
     Path(result_dir).mkdir(exist_ok=True, parents=True)
     with open(os.path.join(result_dir, f'{args.model_name}_{args.method}.pkl'), 'wb') as outfile:
