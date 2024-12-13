@@ -338,7 +338,12 @@ def calculate_hidden_flow(
         base_score = base_scores[0]
 
     [answer] = decode_tokens(mt.tokenizer, [answer_t])
-    e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], subject)
+    try:
+        e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], subject)
+    except:
+        print(f"Couldn't find any token range for {subject}.")
+        print("Attempting dummy token range ...")
+        e_range = (-2, -1)
     if token_range == "subject_last":
         token_range = [e_range[1] - 1]
     elif token_range is not None:
