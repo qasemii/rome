@@ -206,6 +206,10 @@ def main():
             top_n=3,
         )
 
+    # init evaluator
+    soft_norm_suff_evaluator = SoftNormalizedSufficiencyEvaluator(mt.model)
+    soft_norm_comp_evaluator = SoftNormalizedComprehensivenessEvaluator(mt.model)
+
     print("Starting rationalization ...")
     results = {}
     for idx in tqdm(true_predictions_idx[:100]):
@@ -226,14 +230,12 @@ def main():
             )
             # save(ers, filename)
             scores = match_tokens_with_scores(mt, ers).to(mt.model.device)
+            breakpoint()
+            assert scores.shape == input_ids.shape
         else:
             # rationalization
             rationalizer.rationalize(input_ids.unsqueeze(dim=0), target_id.unsqueeze(dim=0))
             scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
-
-        # init evaluator
-        soft_norm_suff_evaluator = SoftNormalizedSufficiencyEvaluator(mt.model)
-        soft_norm_comp_evaluator = SoftNormalizedComprehensivenessEvaluator(mt.model)
 
         input_ids_step = torch.unsqueeze(input_ids, 0)
         target_id_step = torch.unsqueeze(target_id, 0)

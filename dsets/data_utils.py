@@ -45,12 +45,11 @@ def get_predictions(mt, data, topk=10):
 def match_tokens_with_scores(mt, mem_ers):
 
     test = []
-    tokenizer = mt.tokenizer
     scores = mem_ers['scores'].squeeze()
 
     for i, token in enumerate(mem_ers['input_tokens']):
-        token = f" {token}" if i >= 0 else token  # Adding space if index is valid
-        encoded_token = tokenizer.encode(token)
+        token = f" {token}" if i > 0 else token  # Adding space if index is valid
+        encoded_token = mt.tokenizer.encode(token)
         token_length = len(encoded_token)
         test.extend([scores[i].item()] * token_length)
 
