@@ -78,7 +78,7 @@ def main():
 
     args = parser.parse_args()
 
-    nltk.download('punkt_tab')
+    nltk.download('averaged_perceptron_tagger_eng')
 
     result_dir = f"{args.output_dir}/{args.model_name}"
     os.makedirs(result_dir, exist_ok=True)
@@ -139,7 +139,7 @@ def main():
     print(f"Number of True predictions: {len(true_predictions_idx)}/{len(dataset)}")
 
     if args.method == 'membre':
-        pass
+        nltk.download('punkt_tab')
     elif args.method == 'reagent':
 
         token_sampler = POSTagTokenSampler(tokenizer=tokenizer, device=device)
@@ -210,8 +210,7 @@ def main():
         filename = f"{result_dir}/{data['id']}.pkl"
 
         input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
-        target_id = mt.tokenizer(data["target"], return_tensors='pt')['input_ids'][0].to(mt.model.device).unsqueeze(
-            dim=0)
+        target_id = mt.tokenizer((" "+data["target"]), return_tensors='pt')['input_ids'][0].to(mt.model.device)
 
         if args.method == 'membre':
             ers = extract_rationales(
