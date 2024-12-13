@@ -64,7 +64,7 @@ def main():
         ],
     )
     aa("--kind", default="mlp", type=str)
-    aa("--fact_file", default=None)
+    aa("--fact_file", default="knowns")
     aa("--output_dir", default=f"results/")
     aa("--noise_level", default=None, type=float)
     aa("--replace", default=0, type=int)
@@ -170,20 +170,20 @@ def main():
             top_n_ratio=rational_size_ratio
         )
     elif args.method == 'attention_last' or args.method == 'attention_rollout':
-        from rationalization.rationalizer.importance_score_evaluator.attention import AttentionImportanceScoreEvaluator
+        from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.attention import AttentionImportanceScoreEvaluator
         importance_score_evaluator = AttentionImportanceScoreEvaluator(
             model=mt.model,
             tokenizer=mt.tokenizer,
             attn_type=args.method.replace("attention_", "")
         )
-        from rationalization.rationalizer.sample_rationalizer import SampleRationalizer
+        from ReAGent.src.rationalization.rationalizer.sample_rationalizer import SampleRationalizer
         rationalizer = SampleRationalizer(
             importance_score_evaluator=importance_score_evaluator,
             top_n=3,
         )
     else:
         # assert args.method in ['integrated_gradients', 'input_x_gradient', 'attention', 'gradient_shap'] # input_x_gradient = signed in self written
-        from rationalization.rationalizer.importance_score_evaluator.inseq import InseqImportanceScoreEvaluator
+        from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.inseq import InseqImportanceScoreEvaluator
         importance_score_evaluator = InseqImportanceScoreEvaluator(
             model=mt.model,
             tokenizer=mt.tokenizer,
@@ -191,7 +191,7 @@ def main():
             attribute_params={
             }
         )
-        from rationalization.rationalizer.sample_rationalizer import SampleRationalizer
+        from ReAGent.src.rationalization.rationalizer.sample_rationalizer import SampleRationalizer
         rationalizer = SampleRationalizer(
             importance_score_evaluator=importance_score_evaluator,
             top_n=3,
