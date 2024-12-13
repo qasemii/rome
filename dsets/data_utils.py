@@ -42,16 +42,20 @@ def get_predictions(mt, data, topk=10):
     return results
 
 
-def match_tokens_with_scores(mt, mem_ers):
+def match_tokens_with_scores(mt, data, ers):
 
     test = []
-    scores = mem_ers['scores'].squeeze()
+    tokens = nltk.word_tokenize(data['prompt'])
+    scores = ers['scores'].squeeze()
 
-    for i, token in enumerate(mem_ers['input_tokens']):
-        if i == 0:
+    for i, token in enumerate(tokens):
+        if i != 0:
             token = " " + token  # Adding space if index is valid
         encoded_token = mt.tokenizer.encode(token)
         token_length = len(encoded_token)
+        # breakpoint()
         test.extend([scores[i].item()] * token_length)
 
     return torch.tensor(test).unsqueeze(dim=0)
+
+
