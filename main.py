@@ -206,7 +206,7 @@ def main():
         filename = f"{result_dir}/{data['id']}.pkl"
 
         input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
-        target_id = mt.tokenizer((" "+data["target"]), return_tensors='pt')['input_ids'][0].to(mt.model.device)
+        target_id = mt.tokenizer((" "+data["target"]), return_tensors='pt')['input_ids'][0].squeez(dim=0).to(mt.model.device)
 
         if args.method == 'membre':
             ers = extract_rationales(
