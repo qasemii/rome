@@ -230,8 +230,6 @@ def main():
             )
             # save(ers, filename)
             scores = match_tokens_with_scores(mt, ers).to(mt.model.device)
-            breakpoint()
-            assert scores.shape == input_ids.shape
         else:
             # rationalization
             rationalizer.rationalize(input_ids.unsqueeze(dim=0), target_id.unsqueeze(dim=0))
