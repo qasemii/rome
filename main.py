@@ -81,7 +81,7 @@ def main():
 
     nltk.download('averaged_perceptron_tagger_eng')
 
-    result_dir = f"{args.output_dir}/{args.fact_file}/{args.model_name}_{args.method}/"
+    result_dir = f"{args.output_dir}/{args.fact_file}/"
     os.makedirs(result_dir, exist_ok=True)
 
     print('Loading model and tokenizer ...')
@@ -267,7 +267,7 @@ def main():
 
     # export results
     Path(result_dir).mkdir(exist_ok=True, parents=True)
-    with open(os.path.join(result_dir, f'results.pkl'), 'wb') as outfile:
+    with open(os.path.join(result_dir, f'{args.model_name}_{args.method}.pkl'), 'wb') as outfile:
         pickle.dump(results, outfile)
 
 
