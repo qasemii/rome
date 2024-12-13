@@ -42,7 +42,7 @@ def get_predictions(mt, data, topk=10):
     return results
 
 
-def match_tokens_with_scores(mem_ers):
+def match_tokens_with_scores(mt, mem_ers):
 
     test = []
     tokenizer = mt.tokenizer

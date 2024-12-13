@@ -225,7 +225,7 @@ def main():
                 uniform_noise=uniform_noise,
             )
             # save(ers, filename)
-            scores = match_tokens_with_scores(ers['scores']).to(mt.model.device)
+            scores = match_tokens_with_scores(mt, ers['scores']).to(mt.model.device)
         else:
             # rationalization
             rationalizer.rationalize(input_ids.unsqueeze(dim=0), target_id.unsqueeze(dim=0))
