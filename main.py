@@ -146,6 +146,8 @@ def main():
             noise_level = args.noise_level
 
         kind = args.kind
+    elif args.method == 'random':
+        pass
     elif args.method == 'reagent':
 
         token_sampler = POSTagTokenSampler(tokenizer=mt.tokenizer, device=mt.model.device)
