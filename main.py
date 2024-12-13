@@ -29,6 +29,7 @@ import seaborn as sns
 import numpy as np
 import pickle
 from tqdm import tqdm
+from pathlib import Path
 
 from ReAGent.src.rationalization.rationalizer.aggregate_rationalizer import AggregateRationalizer
 from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.delta_prob import \
@@ -139,7 +140,7 @@ def main():
             elif args.model_name == "EleutherAI/gpt-j-6B":
                 base_noise_level = 0.031341552734375
             else:
-                raise ValueError, "Please choose the right model for noise_level"
+                raise ValueError("Please choose the right model for noise_level")
             noise_level = 3 * base_noise_level
         else:
             noise_level = args.noise_level
@@ -147,7 +148,7 @@ def main():
         kind = args.kind
     elif args.method == 'reagent':
 
-        token_sampler = POSTagTokenSampler(tokenizer=tokenizer, device=device)
+        token_sampler = POSTagTokenSampler(tokenizer=mt.tokenizer, device=mt.model.device)
 
         stopping_condition_evaluator = TopKStoppingConditionEvaluator(
             model=mt.model,
@@ -258,11 +259,11 @@ def main():
         print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
 
 
-        results[idx] = {'scores': scores,
-                        'source_soft_ns': source_soft_ns_step,
-                        'source_soft_nc': source_soft_nc_step,
-                        'random_soft_ns': random_soft_ns_step,
-                        'random_soft_nc': random_soft_nc_step,}
+        results[idx] = {'scores': scores.squeeze(),
+                        'source_soft_ns': source_soft_ns_step.item(),
+                        'source_soft_nc': source_soft_nc_step.item(),
+                        'random_soft_ns': random_soft_ns_step.item(),
+                        'random_soft_nc': random_soft_nc_step.item(),}
 
     # export results
     Path(result_dir).mkdir(exist_ok=True, parents=True)
