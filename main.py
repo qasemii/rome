@@ -268,6 +268,7 @@ def main():
                             # 'random_soft_ns': random_soft_ns_step.item(),
                             # 'random_soft_nc': random_soft_nc_step.item(),}
         except:
+            print(f"Unable to get the score for {idx}")
             continue
     # export results
     Path(result_dir).mkdir(exist_ok=True, parents=True)
