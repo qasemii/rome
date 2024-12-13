@@ -22,13 +22,14 @@ class KnownsDataset(Dataset):
         with open(known_loc, "r") as f:
             self.data = json.load(f)
 
+        for d in self.data:
+            d['id'] = d.pop('known_id')
+            d['target'] = d.pop('attribute')
+
         print(f"Loaded dataset with {len(self)} elements")
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, item):
-        self.data[item]['id'] = self.data[item].pop('known_id')
-        self.data[item]['target'] = self.data[item].pop('attribute')
-
         return self.data[item]

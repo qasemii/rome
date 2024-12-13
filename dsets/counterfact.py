@@ -26,15 +26,16 @@ class CounterFactDataset(Dataset):
         if size is not None:
             self.data = self.data[:size]
 
+        for d in self.data:
+            d['id'] = d.pop('case_id')
+            d['subject'] = d["requested_rewrite"]['subject']
+            d['prompt'] = d["requested_rewrite"]["prompt"].replace("{}", self.data[item]['subject'])
+            d['target'] = d["requested_rewrite"]["target_true"]["str"]
+
         print(f"Loaded dataset with {len(self)} elements")
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, item):
-        self.data[item]['id'] = self.data[item].pop('case_id')
-        self.data[item]['subject'] = self.data[item]["requested_rewrite"]['subject']
-        self.data[item]['prompt'] = self.data[item]["requested_rewrite"]["prompt"].replace("{}", self.data[item]['subject'])
-        self.data[item]['target'] = self.data[item]["requested_rewrite"]["target_true"]["str"]
-
         return self.data[item]
