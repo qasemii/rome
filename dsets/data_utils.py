@@ -45,7 +45,7 @@ def get_predictions(mt, data, topk=10):
 def match_tokens_with_scores(mem_ers):
 
     test = []
-    tokenizer = gptmt.tokenizer
+    tokenizer = mt.tokenizer
     scores = mem_ers['scores'].squeeze()
 
     for i, token in enumerate(mem_ers['input_tokens']):
