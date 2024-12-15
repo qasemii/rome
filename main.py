@@ -234,7 +234,7 @@ def main():
             # breakpoint()
             scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
         elif args.method == 'random':
-            scores = torch.softmax(torch.rand(input_ids.shape, device=mt.model.device), dim=-1)
+            scores = torch.softmax(torch.rand(input_ids.unsqueeze(dim=0).shape, device=mt.model.device), dim=-1)
         else:
             # rationalization
             rationalizer.rationalize(input_ids.unsqueeze(dim=0), target_id.unsqueeze(dim=0))
