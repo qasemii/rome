@@ -73,7 +73,8 @@ def extract_rationales(
     results = {}
     high_score = list()
     low_score = list()
-    rank_score = list()
+    low_rank = list()
+    high_rank = list()
     score = list()
 
     for word in tokens:
@@ -115,11 +116,15 @@ def extract_rationales(
         ls = flow['low_score'] # low score
         low_score.append(ls)
 
-        # rank score
-        rs = flow['low_rank']
-        rank_score.append(rs+1)
+        # low rank
+        lr = flow['low_rank']
+        low_rank.append(lr+1)
 
-        s = ms - ls/(rs+1)
+        # high rank
+        hr = flow['ranks'].flatten()[imax]
+        high_rank.append(lr+1)
+
+        s = ms - ls/(lr+1)
         score.append(s)
 
     for k, v in flow.items():
@@ -127,7 +132,8 @@ def extract_rationales(
 
     results['high_score'] = torch.tensor(high_score)
     results['low_score'] = torch.tensor(low_score)
-    results['rank_score'] = torch.tensor(rank_score)
+    results['low_rank'] = torch.tensor(low_rank)
+    results['high_rank'] = torch.tensor(high_rank)
     results['scores'] = torch.tensor(score).unsqueeze(dim=0)
     # breakpoint()
 
