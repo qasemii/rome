@@ -233,6 +233,7 @@ def main():
             # save(ers, filename)
             # breakpoint()
             scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
+            results[idx]["membre"] = ers
         elif args.method == 'random':
             scores = torch.softmax(torch.rand(input_ids.unsqueeze(dim=0).shape, device=mt.model.device), dim=-1)
         else:
