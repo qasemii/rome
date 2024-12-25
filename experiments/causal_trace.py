@@ -391,7 +391,7 @@ def calculate_hidden_flow(
         window=window,
         correct_prediction=True,
         kind=kind or "",
-        low_rank=rank if expect else 0,
+        low_rank=rank,
         ranks=ranks
     )
 
