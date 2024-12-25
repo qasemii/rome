@@ -124,7 +124,7 @@ def extract_rationales(
         hr = flow['ranks'].flatten()[imax]
         high_rank.append(lr+1)
 
-        s = ms - ls/(lr+1)
+        s = ms - ls #/(lr+1)
         score.append(s)
 
     for k, v in flow.items():
