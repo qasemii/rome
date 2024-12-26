@@ -222,17 +222,19 @@ def trace_with_patch(
 
     # We report softmax probabilities for the answers_t token predictions of interest.
     probs = torch.softmax(outputs_exp.logits[1:, -1, :], dim=1).mean(dim=0)
-    rank = torch.sort(probs, descending=True)[1].tolist().index(answers_t)
-    rank = torch.tensor(rank)
-    probs = probs[answers_t]
+    sorted_probs, sorted_ids = torch.sort(probs, descending=True)
+
+    rank = torch.tensor(sorted_ids.tolist().index(answers_t))
+    prob = sorted_probs[rank]
+
     # If tracing all layers, collect all activations together to return.
     if trace_layers is not None:
         all_traced = torch.stack(
             [untuple(td[layer].output).detach().cpu() for layer in trace_layers], dim=2
         )
-        return probs, all_traced
+        return prob, all_traced
 
-    return probs, rank
+    return prob, rank
 
 
 def trace_with_repatch(
