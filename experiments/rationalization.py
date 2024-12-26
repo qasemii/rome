@@ -56,13 +56,15 @@ def extract_rationales(
     window=10,
     normalize=False,
     kind=None,
-    savepdf=None,
     expect=None,
     topk=None,
     snippet_to_corrupt=None,
-    weight=1
 ):
-
+    main_score = predict_token(
+        gptmt,
+        [prompt],
+        return_p=True,
+    )[1][0]
 
     # Tokenize sentence into words and punctuation
     if snippet_to_corrupt:
@@ -130,6 +132,7 @@ def extract_rationales(
     for k, v in flow.items():
         results[k] = v
 
+    results['main_score'] = main_score
     results['high_score'] = torch.tensor(high_score)
     results['low_score'] = torch.tensor(low_score)
     results['low_rank'] = torch.tensor(low_rank)
