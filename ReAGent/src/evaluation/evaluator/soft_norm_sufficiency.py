@@ -1,6 +1,6 @@
 from typing_extensions import override
 import torch
-from transformers import AutoModelForCausalLM, GPT2LMHeadModel, OPTForCausalLM, GPTJForCausalLM
+from transformers import AutoModelForCausalLM, GPT2LMHeadModel, OPTForCausalLM, GPTJForCausalLM, Qwen2ForCausalLM
 from .base import BaseEvaluator
 from .sufficiency import SufficiencyEvaluator
 from .comprehensiveness import ComprehensivenessEvaluator
