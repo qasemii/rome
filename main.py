@@ -70,7 +70,7 @@ def main():
 
     nltk.download('averaged_perceptron_tagger_eng')
 
-    result_dir = f"{args.output_dir}/{args.fact_file}/"
+    result_dir = f"{args.output_dir}{args.fact_file}/{args.model_name}"
     os.makedirs(result_dir, exist_ok=True)
 
     print('Loading model and tokenizer ...')
@@ -232,7 +232,7 @@ def main():
 
         input_ids_step = torch.unsqueeze(input_ids, 0)
         target_id_step = torch.unsqueeze(target_id, 0)
-
+        breakpoint()
         # importance score by Random Score
         # random_scores = torch.softmax(torch.rand(scores.shape, device=mt.model.device), dim=-1)
         try:
@@ -262,7 +262,7 @@ def main():
             continue
     # export results
     Path(result_dir).mkdir(exist_ok=True, parents=True)
-    with open(os.path.join(result_dir, f'{args.model_name}_{args.method}.pkl'), 'wb') as outfile:
+    with open(os.path.join(result_dir, f'{args.method}.pkl'), 'wb') as outfile:
         pickle.dump(results, outfile)
 
 
