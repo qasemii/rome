@@ -551,7 +551,7 @@ def layername(model, num, kind=None):
     if "OLMo" in model.config._name_or_path:
         if kind == "embed":
             return "model.transformer.wte"
-        elif kind in ['attn_out', 'ff_out', 'att_proj', 'ff_proj']:
+        elif kind in ['attn_out', 'ff_out', 'att_proj', 'ff_proj', 'mlp']:
             return f'model.transformer.block.{num}{"" if kind is None else "." + kind}'
         else:
             assert False, "Please choose one of the following: ['attn_out', 'ff_out', 'att_proj', 'ff_proj']"
