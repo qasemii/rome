@@ -232,7 +232,7 @@ def main():
 
         input_ids_step = torch.unsqueeze(input_ids, 0)
         target_id_step = torch.unsqueeze(target_id, 0)
-        breakpoint()
+
         # importance score by Random Score
         # random_scores = torch.softmax(torch.rand(scores.shape, device=mt.model.device), dim=-1)
         try:
