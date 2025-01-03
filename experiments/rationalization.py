@@ -47,6 +47,72 @@ torch.set_grad_enabled(False)
 
 nltk.download('punkt_tab')
 
+
+def get_noisy_score(
+    mt,
+    prompt,
+    subject,
+    samples=10,
+    noise=0.1,
+    token_range=None,
+    uniform_noise=False,
+    replace=False,
+    expect=None,
+    topk=None
+):
+    """
+    Runs causal tracing over every token/layer combination in the network
+    and returns a dictionary numerically summarizing the results.
+    """
+    inp = make_inputs(mt.tokenizer, [prompt] * (samples + 1))
+    with torch.no_grad():
+        answers_t, base_scores = [d[0] for d in predict_from_input(mt.model, inp, topk=topk)]
+
+    answers = decode_tokens(mt.tokenizer, answers_t)
+    answers = [a.strip() for a in answers]
+
+    if expect is not None:
+        if topk is None:
+            raise ValueError("topk is None.")
+        if not expect in answers:
+            raise ValueError(f"'{expect}' is not in top-{topk} predictions.")
+        index = answers.index(expect)
+        answer_t = answers_t[index]
+        base_score = base_scores[index]
+    else:
+        answer_t = answers_t[0]
+        base_score = base_scores[0]
+
+    [answer] = decode_tokens(mt.tokenizer, [answer_t])
+    try:
+        e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], subject)
+    except:
+        print(f"Couldn't find any token range for {subject}.")
+        print("Attempting dummy token range ...")
+        e_range = (-2, -1)
+    if token_range == "subject_last":
+        token_range = [e_range[1] - 1]
+    elif token_range is not None:
+        raise ValueError(f"Unknown token_range: {token_range}")
+    low_score, rank = trace_with_patch(
+        mt.model, inp, [], answer_t, e_range, noise=noise, uniform_noise=uniform_noise
+    )
+
+    low_score = low_score.item()
+    return dict(
+        low_score=low_score,
+        high_score=base_score,
+        input_ids=inp["input_ids"][0],
+        input_tokens=decode_tokens(mt.tokenizer, inp["input_ids"][0]),
+        subject_range=e_range,
+        answer=answer,
+        window=window,
+        correct_prediction=True,
+        kind=kind or "",
+        low_rank=rank,
+        ranks=ranks
+    )
+
 def extract_rationales(
     mt,
     prompt,
@@ -61,10 +127,10 @@ def extract_rationales(
     snippet_to_corrupt=None,
 ):
     main_score = predict_token(
-        gptmt,
+        mt,
         [prompt],
         return_p=True,
-    )[1][0]
+    )[1][0].cpu()
 
     # Tokenize sentence into words and punctuation
     if snippet_to_corrupt:
@@ -102,16 +168,14 @@ def extract_rationales(
         # ms = torch.mean(flow['scores'])
 
         # OPTION 3
-        # ms = torch.max(flow['scores'])
+        imax = torch.argmax(flow['scores'].flatten()).item()
+        ms = flow['scores'].flatten()[imax]
 
         # OPTION 4
-        imax = torch.argmax(flow['scores'].flatten()).item()
 
         # window_s = max(0,imax-5)
         # window_e = min(flow['scores'].numel(), window_s+10)
         # ms = torch.sum(torch.sum(flow['scores'].flatten()[imax]))
-
-        ms = flow['scores'].flatten()[imax]
 
         high_score.append(ms)
 
