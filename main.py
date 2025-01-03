@@ -78,7 +78,7 @@ def main():
         args.model_name,
         low_cpu_mem_usage=True,
         torch_dtype=torch.float16,
-        adapter_name_or_path=None)
+        )
 
     if args.fact_file == "knowns":
         dataset = KnownsDataset(DATA_DIR)
