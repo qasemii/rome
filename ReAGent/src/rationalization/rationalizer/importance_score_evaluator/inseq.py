@@ -24,6 +24,7 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         super().__init__(model, tokenizer)
 
         self.attribution_model = inseq.load_model(self.model.name_or_path, method)
+        self.attribution_model.tokenizer.pad_token = self.attribution_model.tokenizer.eos_token
         self.attribute_params = attribute_params
 
     def evaluate(self, input_ids: torch.Tensor, target_id: torch.Tensor) -> torch.Tensor:
