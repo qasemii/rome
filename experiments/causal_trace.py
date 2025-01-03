@@ -552,7 +552,7 @@ def layername(model, num, kind=None):
         if kind == "embed":
             return "model.transformer.wte"
         elif kind in ['attn_out', 'ff_out', 'att_proj', 'ff_proj']:
-            return f"model.transformer.block.{num}{"" if kind is None else "." + kind}"
+            return f'model.transformer.block.{num}{"" if kind is None else "." + kind}'
         else:
             assert False, "Please choose one of the following: ['attn_out', 'ff_out', 'att_proj', 'ff_proj']"
     assert False, "Unknown transformer structure"
