@@ -555,6 +555,12 @@ def layername(model, num, kind=None):
             return f'model.transformer.block.{num}{"" if kind is None else "." + kind}'
         else:
             assert False, "Please choose one of the following: ['attn_out', 'ff_out', 'att_proj', 'ff_proj']"
+    if "Qwen" in model.config._name_or_path:
+        if kind == "embed":
+            return "model.embed_tokens"
+        if kind == "attn":
+            kind = "self_attn"
+        return f'model.layers.{num}{"" if kind is None else "." + kind}'
     assert False, "Unknown transformer structure"
 
 
