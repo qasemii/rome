@@ -54,18 +54,7 @@ def main():
     def aa(*args, **kwargs):
         parser.add_argument(*args, **kwargs)
 
-    aa(
-        "--model_name",
-        default="gpt2-medium",
-        choices=[
-            "EleutherAI/gpt-j-6B",
-            "EleutherAI/gpt-neox-20b",
-            "gpt2-xl",
-            "gpt2-large",
-            "gpt2-medium",
-            "gpt2",
-        ],
-    )
+    aa("--model_name", default="gpt2-medium")
     aa("--kind", default="mlp", type=str)
     aa("--fact_file", default="knowns")
     aa("--output_dir", default=f"results/")
