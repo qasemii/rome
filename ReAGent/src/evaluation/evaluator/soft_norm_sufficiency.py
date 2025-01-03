@@ -52,6 +52,9 @@ class SoftNormalizedSufficiencyEvaluator(BaseEvaluator):
             elif isinstance(self.model, GPTJForCausalLM):
                 gptjModel: GPTJForCausalLM = self.model
                 input_wte = gptjModel.transformer.wte.weight[input_ids,:]
+            elif isinstance(self.model, Qwen2ForCausalLM):
+                qwen2Model: Qwen2ForCausalLM = self.model
+                input_wte = qwen2Model.model.embed_tokens.weight[input_ids,:]
             else:
                 raise ValueError(f"Unsupported model {type(self.model)}")
                 # ValueError: Unsupported model <class 'transformers.models.gptj.modeling_gptj.GPTJForCausalLM'>
