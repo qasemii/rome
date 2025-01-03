@@ -538,23 +538,24 @@ class ModelAndTokenizer:
 
 
 def layername(model, num, kind=None):
-    if hasattr(model, "transformer"): # GPT (without LoRA)
+    if "gpt2" in model.config._name_or_path: # GPT (without LoRA)
         if kind == "embed":
             return "transformer.wte" #base_model.model.transformer.wte
         return f'transformer.h.{num}{"" if kind is None else "." + kind}'
-    if hasattr(model, "gpt_neox"):
-        if kind == "embed":
-            return "gpt_neox.embed_in"
-        if kind == "attn":
-            kind = "attention"
-        return f'gpt_neox.layers.{num}{"" if kind is None else "." + kind}'
-    if hasattr(model, "model"): # Gemma
+    if "gemma" in model.config._name_or_path:
         if kind == "embed":
             return "model.embed_tokens"
         if kind == "attn":
             kind = "self_attn"
         return f'model.layers.{num}{"" if kind is None else "." + kind}'
-    assert False, "unknown transformer structure"
+    if "OLMo" in model.config._name_or_path:
+        if kind == "embed":
+            return "model.transformer.wte"
+        elif kind in ['attn_out', 'ff_out', 'att_proj', 'ff_proj']:
+            return f"model.transformer.block.{num}{"" if kind is None else "." + kind}"
+        else:
+            assert False, "Please choose one of the following: ['attn_out', 'ff_out', 'att_proj', 'ff_proj']"
+    assert False, "Unknown transformer structure"
 
 
 def guess_subject(prompt):
