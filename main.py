@@ -7,6 +7,7 @@ from util.globals import DATA_DIR
 from experiments.causal_trace import (
     ModelAndTokenizer,
     layername,
+    collect_embedding_std,
 )
 from experiments.causal_trace import (
     predict_token,
@@ -123,7 +124,7 @@ def main():
         nltk.download('punkt_tab')
 
         print("Collecting embeddings std ...")
-        base_noise_level = collect_embedding_std(gptmt, [k["subject"] for k in dataset])
+        base_noise_level = collect_embedding_std(mt, [k["subject"] for k in dataset])
         print(f"Base noise level: {base_noise_level}")
 
         kind = args.kind
@@ -195,7 +196,7 @@ def main():
 
     print("Starting rationalization ...")
     results = {}
-    samples = random.choices(knowns, k=args.n_samples)
+    samples = random.choices(dataset, k=args.n_samples)
     for s in tqdm(samples):
         idx = s['id']
         results[idx] = {}
@@ -209,7 +210,7 @@ def main():
                 mt,
                 data["prompt"],
                 kind=kind,
-                noise=noise_level,
+                noise=3*base_noise_level,
                 uniform_noise=uniform_noise,
             )
             # save(ers, filename)

@@ -74,7 +74,7 @@ def extract_rationales(
       tokens = nltk.word_tokenize(prompt)
 
     results = {}
-    low_score = list()
+    low_scores = list()
     differences = list()
 
     for word in tokens:
@@ -95,8 +95,8 @@ def extract_rationales(
         ls = flow['low_score'] # low score
         low_scores.append(ls)
 
-        lr = flow['low_rank']
-        low_rank.append(lr+1)
+        # lr = flow['low_rank']
+        # low_rank.append(lr+1)
 
         s = main_score - ls
         differences.append(s)
@@ -105,11 +105,11 @@ def extract_rationales(
         results[k] = v
 
     results['main_score'] = main_score
-    results['low_scores'] = torch.tensor(low_score)
+    results['low_scores'] = torch.tensor(low_scores)
     results['differences'] = torch.tensor(differences).unsqueeze(dim=0)
 
     if normalize:
-      results['scores'] = torch.softmax(results['scores'], dim=1)
+      results['differences'] = torch.softmax(results['differences'], dim=1)
 
     results['input_tokens'] = tokens
 

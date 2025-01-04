@@ -46,7 +46,7 @@ def match_tokens_with_scores(mt, data, ers):
 
     test = []
     tokens = nltk.word_tokenize(data['prompt'])
-    scores = ers['scores'].squeeze()
+    scores = ers['differences'].squeeze()
 
     for i, token in enumerate(tokens):
         if i != 0:
