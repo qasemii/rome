@@ -43,8 +43,11 @@ from ReAGent.src.evaluation.evaluator.soft_norm_comprehensiveness import SoftNor
 
 import csv
 
-random.seed(42)
+device = "cuda"
 
+random.seed(42)
+torch.manual_seed(42)
+torch.use_deterministic_algorithms(True, warn_only=True)
 torch.set_grad_enabled(False)
 
 
@@ -59,6 +62,7 @@ def main():
     aa("--fact_file", default="knowns")
     aa("--output_dir", default=f"results/")
     aa("--noise_level", default=None, type=float)
+    aa("--n_samples", default=100, type=int)
     aa("--method",
        type=str,
        default="integrated_gradients",
@@ -80,6 +84,7 @@ def main():
         torch_dtype=torch.float16,
         )
 
+    print(f"Loading {args.fact_file} dataset")
     if args.fact_file == "knowns":
         dataset = KnownsDataset(DATA_DIR)
     elif args.fact_file == "counterfact":
@@ -99,40 +104,27 @@ def main():
     max_step = 3000
     batch = 3
 
-    print("Getting model's predictions...")
-    predictions = []
-    for data in tqdm(dataset):
-        p = predict_token(
-            mt,
-            [data["prompt"]],  # original/relevant/irrelevant/counterfact
-            return_p=True,
-            topk=10
-        )
-        predictions.append(p)
-
-    true_predictions_idx = [i for i, r in enumerate(predictions) if
-                            predictions[i][0][0].strip() == dataset[i]['target']]
-    print(f"Number of True predictions: {len(true_predictions_idx)}/{len(dataset)}")
+    # print("Getting model's predictions...")
+    # predictions = []
+    # for data in tqdm(dataset):
+    #     p = predict_token(
+    #         mt,
+    #         [data["prompt"]],  # original/relevant/irrelevant/counterfact
+    #         return_p=True,
+    #         topk=10
+    #     )
+    #     predictions.append(p)
+    #
+    # true_predictions_idx = [i for i, r in enumerate(predictions) if
+    #                         predictions[i][0][0].strip() == dataset[i]['target']]
+    # print(f"Number of True predictions: {len(true_predictions_idx)}/{len(dataset)}")
 
     if args.method == 'membre':
         nltk.download('punkt_tab')
 
-        if args.noise_level is None:
-            if args.model_name == "gpt2":
-                base_noise_level = 0.1346435546875
-            elif args.model_name == "gpt2-medium":
-                base_noise_level = 0.10894775390625
-            elif args.model_name == "gpt2-large":
-                base_noise_level = 0.053924560546875
-            elif args.model_name == "gpt2-xl":
-                base_noise_level = 0.0450439453125
-            elif args.model_name == "EleutherAI/gpt-j-6B":
-                base_noise_level = 0.031341552734375
-            else:
-                raise ValueError("Please choose the right model for noise_level")
-            noise_level = 3 * base_noise_level
-        else:
-            noise_level = args.noise_level
+        print("Collecting embeddings std ...")
+        base_noise_level = collect_embedding_std(gptmt, [k["subject"] for k in dataset])
+        print(f"Base noise level: {base_noise_level}")
 
         kind = args.kind
     elif args.method == 'random':
@@ -203,10 +195,11 @@ def main():
 
     print("Starting rationalization ...")
     results = {}
-    for idx in tqdm(true_predictions_idx[:100]):
+    samples = random.choices(knowns, k=args.n_samples)
+    for s in tqdm(samples):
+        idx = s['id']
         results[idx] = {}
-        data = dataset[idx]
-        filename = f"{result_dir}/{data['id']}.pkl"
+        data = s
 
         input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
         target_id = mt.tokenizer((" "+data["target"]), return_tensors='pt')['input_ids'][0].squeeze(dim=0).to(mt.model.device)
