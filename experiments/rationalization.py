@@ -50,6 +50,7 @@ nltk.download('punkt_tab')
 def extract_rationales(
     mt,
     prompt,
+    get_states=False,
     samples=10,
     noise=0.1,
     uniform_noise=False,
@@ -73,17 +74,15 @@ def extract_rationales(
       tokens = nltk.word_tokenize(prompt)
 
     results = {}
-    high_score = list()
     low_score = list()
-    low_rank = list()
-    high_rank = list()
-    score = list()
+    differences = list()
 
     for word in tokens:
         flow = calculate_hidden_flow(
             mt,
             prompt,
             subject=word,
+            get_states=get_states,
             samples=samples,
             noise=noise,
             uniform_noise=uniform_noise,
@@ -93,50 +92,21 @@ def extract_rationales(
             topk=topk,
         )
 
-        # indirect score
-        # OPTION 1
-        # ms = torch.topk(flow['scores'].flatten(), 3).values
-        # ms = torch.sum(torch.sum(ms))
-
-        # OPTION 2
-        # ms = torch.mean(flow['scores'])
-
-        # OPTION 3
-        imax = torch.argmax(flow['scores'].flatten()).item()
-        ms = flow['scores'].flatten()[imax]
-
-        # OPTION 4
-
-        # window_s = max(0,imax-5)
-        # window_e = min(flow['scores'].numel(), window_s+10)
-        # ms = torch.sum(torch.sum(flow['scores'].flatten()[imax]))
-
-        high_score.append(ms)
-
         ls = flow['low_score'] # low score
-        low_score.append(ls)
+        low_scores.append(ls)
 
-        # low rank
         lr = flow['low_rank']
         low_rank.append(lr+1)
 
-        # high rank
-        hr = flow['ranks'].flatten()[imax]
-        high_rank.append(lr+1)
-
-        s = ms - ls #/(lr+1)
-        score.append(s)
+        s = main_score - ls
+        differences.append(s)
 
     for k, v in flow.items():
         results[k] = v
 
     results['main_score'] = main_score
-    results['high_score'] = torch.tensor(high_score)
-    results['low_score'] = torch.tensor(low_score)
-    results['low_rank'] = torch.tensor(low_rank)
-    results['high_rank'] = torch.tensor(high_rank)
-    results['scores'] = torch.tensor(score).unsqueeze(dim=0)
-    # breakpoint()
+    results['low_scores'] = torch.tensor(low_score)
+    results['differences'] = torch.tensor(differences).unsqueeze(dim=0)
 
     if normalize:
       results['scores'] = torch.softmax(results['scores'], dim=1)
