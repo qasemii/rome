@@ -301,6 +301,7 @@ def calculate_hidden_flow(
     mt,
     prompt,
     subject,
+    get_states=False,
     samples=10,
     noise=0.1,
     token_range=None,
@@ -350,33 +351,37 @@ def calculate_hidden_flow(
     )
 
     low_score = low_score.item()
-    if not kind:
-        differences, ranks = trace_important_states(
-            mt.model,
-            mt.num_layers,
-            inp,
-            e_range,
-            answer_t,
-            noise=noise,
-            uniform_noise=uniform_noise,
-            replace=replace,
-            token_range=token_range,
-        )
-    else:
-        differences, ranks = trace_important_window(
-            mt.model,
-            mt.num_layers,
-            inp,
-            e_range,
-            answer_t,
-            noise=noise,
-            uniform_noise=uniform_noise,
-            replace=replace,
-            window=window,
-            kind=kind,
-            token_range=token_range,
-        )
-    differences = differences.detach().cpu()
+
+    differences = None
+    if get_states:
+        if not kind:
+            differences, ranks = trace_important_states(
+                mt.model,
+                mt.num_layers,
+                inp,
+                e_range,
+                answer_t,
+                noise=noise,
+                uniform_noise=uniform_noise,
+                replace=replace,
+                token_range=token_range,
+            )
+        else:
+            differences, ranks = trace_important_window(
+                mt.model,
+                mt.num_layers,
+                inp,
+                e_range,
+                answer_t,
+                noise=noise,
+                uniform_noise=uniform_noise,
+                replace=replace,
+                window=window,
+                kind=kind,
+                token_range=token_range,
+            )
+        differences = differences.detach().cpu()
+
     return dict(
         scores=differences,
         low_score=low_score,
@@ -816,7 +821,7 @@ def predict_from_input(model, inp, topk=None):
 
 def collect_embedding_std(mt, subjects):
     alldata = []
-    for s in subjects:
+    for s in tqdm(subjects):
         inp = make_inputs(mt.tokenizer, [s])
         with nethook.Trace(mt.model, layername(mt.model, 0, "embed")) as t:
             mt.model(**inp)
