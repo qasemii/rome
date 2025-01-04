@@ -10,6 +10,12 @@ from datasets import load_dataset
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    Qwen2ForCausalLM,
+    OLMoForCausalLM,
+    Gemma2ForCausalLM,
+    LlamaForCausalLM,
+)
 from peft import AutoPeftModelForCausalLM
 
 from dsets import KnownsDataset
