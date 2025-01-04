@@ -47,18 +47,7 @@ def main():
         else:
             return float(code)
 
-    aa(
-        "--model_name",
-        default="gpt2-xl",
-        choices=[
-            "gpt2-xl",
-            "EleutherAI/gpt-j-6B",
-            "EleutherAI/gpt-neox-20b",
-            "gpt2-large",
-            "gpt2-medium",
-            "gpt2",
-        ],
-    )
+    aa("--model_name", default="gpt2-xl")
     aa("--fact_file", default=None)
     aa("--output_dir", default="results/{model_name}/causal_trace")
     aa("--noise_level", default="s3", type=parse_noise_rule)
@@ -571,9 +560,6 @@ def layername(model, num, kind=None):
         return f'model.layers.{num}{"" if kind is None else "." + kind}'
     else:
         raise ValueError(f"Unsupported model {type(self.model)}")
-
-assert False, "Unknown transformer structure"
-
 
 def guess_subject(prompt):
     return re.search(r"(?!Wh(o|at|ere|en|ich|y) )([A-Z]\S*)(\s[A-Z][a-z']*)*", prompt)[
