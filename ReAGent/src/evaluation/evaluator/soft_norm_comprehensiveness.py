@@ -1,6 +1,12 @@
 from typing_extensions import override
 import torch
-from transformers import AutoModelForCausalLM, GPT2LMHeadModel, OPTForCausalLM, GPTJForCausalLM, Qwen2ForCausalLM
+from transformers import (
+    AutoModelForCausalLM,
+    Qwen2ForCausalLM,
+    OLMoForCausalLM,
+    Gemma2ForCausalLM,
+    LlamaForCausalLM,
+)
 from .base import BaseEvaluator
 from .sufficiency import SufficiencyEvaluator
 from .comprehensiveness import ComprehensivenessEvaluator
@@ -42,19 +48,18 @@ class SoftNormalizedComprehensivenessEvaluator(BaseEvaluator):
         """
 
         if input_wte == None:
-            # input_wte = self.model.transformer.wte.weight[input_ids,:]
-            if isinstance(self.model, GPT2LMHeadModel):
-                gpt2Model: GPT2LMHeadModel = self.model
-                input_wte = gpt2Model.transformer.wte.weight[input_ids,:]
-            elif isinstance(self.model, OPTForCausalLM):
-                optModel: OPTForCausalLM = self.model
-                input_wte = optModel.model.decoder.embed_tokens(input_ids)
-            elif isinstance(self.model, GPTJForCausalLM):
-                gptjModel: GPTJForCausalLM = self.model
-                input_wte = gptjModel.transformer.wte.weight[input_ids,:]
-            elif isinstance(self.model, Qwen2ForCausalLM):
+            if isinstance(self.model, Qwen2ForCausalLM):
                 qwen2Model: Qwen2ForCausalLM = self.model
                 input_wte = qwen2Model.model.embed_tokens.weight[input_ids,:]
+            elif isinstance(self.model, OLMoForCausalLM):
+                olmoModel: OLMoForCausalLM = self.model
+                input_wte = olmoModel.model.transformer.wte.weight[input_ids,:]
+            elif isinstance(self.model, Gemma2ForCausalLM):
+                gemma2Model: Gemma2ForCausalLM = self.model
+                input_wte = gemma2Model.model.embed_tokens.weight[input_ids,:]
+            elif isinstance(self.model, LlamaForCausalLM):
+                llamaModel: LlamaForCausalLM = self.model
+                input_wte = llamaModel.model.embed_tokens.weight[input_ids,:]
             else:
                 raise ValueError(f"Unsupported model {type(self.model)}")
 
