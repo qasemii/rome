@@ -3,10 +3,10 @@ import torch
 from transformers import (
     AutoModelForCausalLM,
     Qwen2ForCausalLM,
-    OLMoForCausalLM,
     Gemma2ForCausalLM,
     LlamaForCausalLM,
 )
+from hf_olmo import OLMoForCausalLM
 from .base import BaseEvaluator
 from .sufficiency import SufficiencyEvaluator
 from .comprehensiveness import ComprehensivenessEvaluator
