@@ -518,7 +518,7 @@ class ModelAndTokenizer:
             if adapter_name_or_path is not None:
                 model.load_adapter(adapter_name_or_path)
 
-            model.eval().cuda()
+            model.eval()#.cuda()
 
         self.tokenizer = tokenizer
         self.model = model
@@ -538,30 +538,35 @@ class ModelAndTokenizer:
 
 
 def layername(model, num, kind=None):
-    if "gpt2" in model.config._name_or_path: # GPT (without LoRA)
-        if kind == "embed":
-            return "transformer.wte" #base_model.model.transformer.wte
-        return f'transformer.h.{num}{"" if kind is None else "." + kind}'
-    if "gemma" in model.config._name_or_path:
+    if isinstance(model, Qwen2ForCausalLM):
         if kind == "embed":
             return "model.embed_tokens"
         if kind == "attn":
             kind = "self_attn"
         return f'model.layers.{num}{"" if kind is None else "." + kind}'
-    if "OLMo" in model.config._name_or_path:
+    elif isinstance(model, OLMoForCausalLM):
         if kind == "embed":
             return "model.transformer.wte"
         elif kind in ['attn_out', 'ff_out', 'att_proj', 'ff_proj', 'mlp']:
             return f'model.transformer.block.{num}{"" if kind is None else "." + kind}'
         else:
             assert False, "Please choose one of the following: ['attn_out', 'ff_out', 'att_proj', 'ff_proj']"
-    if "Qwen" in model.config._name_or_path:
+    elif isinstance(model, Gemma2ForCausalLM):
         if kind == "embed":
             return "model.embed_tokens"
         if kind == "attn":
             kind = "self_attn"
         return f'model.layers.{num}{"" if kind is None else "." + kind}'
-    assert False, "Unknown transformer structure"
+    elif isinstance(model, LlamaForCausalLM):
+        if kind == "embed":
+            return "model.embed_tokens"
+        if kind == "attn":
+            kind = "self_attn"
+        return f'model.layers.{num}{"" if kind is None else "." + kind}'
+    else:
+        raise ValueError(f"Unsupported model {type(self.model)}")
+
+assert False, "Unknown transformer structure"
 
 
 def guess_subject(prompt):
