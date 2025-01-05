@@ -4,12 +4,12 @@ import torch, numpy
 from collections import defaultdict
 from util import nethook
 from util.globals import DATA_DIR
-from experiments.utlis import (
+from experiments.utils import (
     ModelAndTokenizer,
     layername,
     collect_embedding_std,
 )
-from experiments.utlis import (
+from experiments.utils import (
     predict_token,
 )
 from experiments.rationalization import (
