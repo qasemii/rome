@@ -73,7 +73,7 @@ def make_noisy_embeddings(
     else:
         noise_fn = noise
 
-    def add_noise(x, layer):
+    def patch_rep(x, layer):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
         if tokens_to_mix is not None:
             b, e = tokens_to_mix
@@ -90,7 +90,7 @@ def make_noisy_embeddings(
     with torch.no_grad(), nethook.TraceDict(
         model,
         [embed_layername],
-        edit_output=add_noise,
+        edit_output=patch_rep,
     ) as td:
         outputs_exp = model(**inp)
 
