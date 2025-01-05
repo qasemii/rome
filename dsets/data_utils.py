@@ -3,7 +3,7 @@ import torch, numpy
 from collections import defaultdict
 from util import nethook
 from util.globals import DATA_DIR
-from experiments.causal_trace import (
+from experiments.utlis import (
     ModelAndTokenizer,
     layername,
     guess_subject,
@@ -46,7 +46,7 @@ def match_tokens_with_scores(mt, data, ers):
 
     test = []
     tokens = nltk.word_tokenize(data['prompt'])
-    scores = ers['differences'].squeeze()
+    scores = ers['scores'].squeeze()
 
     for i, token in enumerate(tokens):
         if i != 0:

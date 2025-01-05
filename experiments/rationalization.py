@@ -3,29 +3,19 @@ import torch, numpy
 from collections import defaultdict
 from util import nethook
 from util.globals import DATA_DIR
-from experiments.causal_trace import (
+from experiments.utlis import (
     ModelAndTokenizer,
     layername,
-    guess_subject,
-    plot_trace_heatmap,
 )
-from experiments.causal_trace import (
+from experiments.utlis import (
     make_inputs,
     decode_tokens,
     find_token_range,
     predict_token,
     predict_from_input,
     collect_embedding_std,
-    plot_all_flow,
-
-    trace_with_patch,
-    trace_important_states,
-    trace_important_window,
-    calculate_hidden_flow,
-    plot_aggregated_heatmap,
-    plot_hidden_aggregation,
-    plot_hidden_flow,
-    plot_all_flow
+    make_noisy_embeddings,
+    calculate_noisy_result,
 )
 from dsets import KnownsDataset
 
@@ -50,53 +40,49 @@ nltk.download('punkt_tab')
 def extract_rationales(
     mt,
     prompt,
-    get_states=False,
     samples=10,
     noise=0.1,
     uniform_noise=False,
-    window=10,
-    normalize=False,
-    kind=None,
     expect=None,
     topk=None,
-    snippet_to_corrupt=None,
+    normalize=False,
 ):
-    main_score = predict_token(
-        mt,
-        [prompt],
-        return_p=True,
-    )[1][0].cpu()
+    inp = make_inputs(mt.tokenizer, [prompt] * (samples + 1))
+    with torch.no_grad():
+        answers_t, base_scores = [d[0] for d in predict_from_input(mt.model, inp, topk=topk)]
+
+    answers = decode_tokens(mt.tokenizer, answers_t)
+    answers = [a.strip() for a in answers]
+
+    if expect is not None:
+        if topk is None:
+            raise ValueError("topk is None.")
+        if not expect in answers:
+            raise ValueError(f"'{expect}' is not in top-{topk} predictions.")
+        index = answers.index(expect)
+        base_score = base_scores[index]
+    else:
+        base_score = base_scores[0]
 
     # Tokenize sentence into words and punctuation
-    if snippet_to_corrupt:
-      tokens = nltk.word_tokenize(snippet_to_corrupt)
-    else:
-      tokens = nltk.word_tokenize(prompt)
+    tokens = nltk.word_tokenize(prompt)
 
     results = {}
     low_scores = list()
     differences = list()
 
     for word in tokens:
-        flow = calculate_hidden_flow(
+        flow = calculate_noisy_result(
             mt,
-            prompt,
-            subject=word,
-            get_states=get_states,
-            samples=samples,
+            input=inp,
+            token=word,
             noise=noise,
             uniform_noise=uniform_noise,
-            window=window,
-            kind=kind,
             expect=expect,
-            topk=topk,
         )
 
         ls = flow['low_score'] # low score
         low_scores.append(ls)
-
-        # lr = flow['low_rank']
-        # low_rank.append(lr+1)
 
         s = main_score - ls
         differences.append(s)
@@ -104,14 +90,15 @@ def extract_rationales(
     for k, v in flow.items():
         results[k] = v
 
-    results['main_score'] = main_score
+    results['input_ids'] = inp["input_ids"][0]
+    results['input_tokens'] = tokens
+    results['answer'] = expect
+    results['base_score'] = base_score
     results['low_scores'] = torch.tensor(low_scores)
     results['differences'] = torch.tensor(differences).unsqueeze(dim=0)
 
     if normalize:
       results['differences'] = torch.softmax(results['differences'], dim=1)
-
-    results['input_tokens'] = tokens
 
     return results
 
