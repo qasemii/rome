@@ -73,7 +73,7 @@ def make_noisy_embeddings(
     else:
         noise_fn = noise
 
-    def patch_rep(x, layer):
+    def add_noise(x, layer):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
         if tokens_to_mix is not None:
             b, e = tokens_to_mix
@@ -90,7 +90,7 @@ def make_noisy_embeddings(
     with torch.no_grad(), nethook.TraceDict(
         model,
         [embed_layername],
-        edit_output=patch_rep,
+        edit_output=add_noise,
     ) as td:
         outputs_exp = model(**inp)
 
@@ -127,7 +127,7 @@ def calculate_noisy_result(
         raise ValueError(f"Unknown token_range: {token_range}")
 
     low_score, rank = make_noisy_embeddings(
-        mt.model, input, [], expect, e_range, noise=noise, uniform_noise=uniform_noise
+        mt.model, input, expect, e_range, noise=noise, uniform_noise=uniform_noise
     )
 
     return dict(
