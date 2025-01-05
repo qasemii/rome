@@ -43,95 +43,62 @@ def extract_rationales(
     samples=10,
     noise=0.1,
     uniform_noise=False,
-    window=10,
-    normalize=False,
-    kind=None,
     expect=None,
     topk=None,
-    snippet_to_corrupt=None,
+    normalize=False,
 ):
-    main_score = predict_token(
-        mt,
-        [prompt],
-        return_p=True,
-    )[1][0].cpu()
+    inp = make_inputs(mt.tokenizer, [prompt] * (samples + 1))
+    with torch.no_grad():
+        answers_t, base_scores = [d[0] for d in predict_from_input(mt.model, inp, topk=topk)]
+
+    answers = decode_tokens(mt.tokenizer, answers_t)
+    answers = [a.strip() for a in answers]
+
+    if expect is not None:
+        if topk is None:
+            raise ValueError("topk is None.")
+        if not expect in answers:
+            raise ValueError(f"'{expect}' is not in top-{topk} predictions.")
+        index = answers.index(expect)
+        base_score = base_scores[index]
+    else:
+        base_score = base_scores[0]
 
     # Tokenize sentence into words and punctuation
-    if snippet_to_corrupt:
-      tokens = nltk.word_tokenize(snippet_to_corrupt)
-    else:
-      tokens = nltk.word_tokenize(prompt)
+    tokens = nltk.word_tokenize(prompt)
 
     results = {}
-    high_score = list()
-    low_score = list()
-    low_rank = list()
-    high_rank = list()
-    score = list()
+    low_scores = list()
+    differences = list()
 
     for word in tokens:
         flow = calculate_noisy_result(
             mt,
-            prompt,
+            input=inp,
             token=word,
-            samples=samples,
             noise=noise,
             uniform_noise=uniform_noise,
-            window=window,
-            kind=kind,
             expect=expect,
-            topk=topk,
         )
 
-        # indirect score
-        # OPTION 1
-        # ms = torch.topk(flow['scores'].flatten(), 3).values
-        # ms = torch.sum(torch.sum(ms))
-
-        # OPTION 2
-        # ms = torch.mean(flow['scores'])
-
-        # OPTION 3
-        imax = torch.argmax(flow['scores'].flatten()).item()
-        ms = flow['scores'].flatten()[imax]
-
-        # OPTION 4
-
-        # window_s = max(0,imax-5)
-        # window_e = min(flow['scores'].numel(), window_s+10)
-        # ms = torch.sum(torch.sum(flow['scores'].flatten()[imax]))
-
-        high_score.append(ms)
-
         ls = flow['low_score'] # low score
-        low_score.append(ls)
+        low_scores.append(ls)
 
-        # low rank
-        lr = flow['low_rank']
-        low_rank.append(lr+1)
-
-        # high rank
-        hr = flow['ranks'].flatten()[imax]
-        high_rank.append(lr+1)
-
-        s = ms - ls #/(lr+1)
-        score.append(s)
+        s = main_score - ls
+        differences.append(s)
 
     for k, v in flow.items():
         results[k] = v
 
-    results['main_score'] = main_score
-    results['high_score'] = torch.tensor(high_score)
-    results['low_score'] = torch.tensor(low_score)
-    results['low_rank'] = torch.tensor(low_rank)
-    results['high_rank'] = torch.tensor(high_rank)
-    results['scores'] = torch.tensor(score).unsqueeze(dim=0)
-    # breakpoint()
+    results['input_ids'] = inp["input_ids"][0]
+    results['input_tokens'] = tokens
+    results['answer'] = expect
+    results['base_score'] = base_score
+    results['low_scores'] = torch.tensor(low_scores)
+    results['differences'] = torch.tensor(differences).unsqueeze(dim=0)
 
     if normalize:
-      results['scores'] = torch.softmax(results['scores'], dim=1)
-
-    results['input_tokens'] = tokens
+      results['differences'] = torch.softmax(results['differences'], dim=1)
 
     return results
 
