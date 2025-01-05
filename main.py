@@ -32,15 +32,14 @@ import pickle
 from tqdm import tqdm
 from pathlib import Path
 
-from ReAGent.src.rationalization.rationalizer.aggregate_rationalizer import AggregateRationalizer
-from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.delta_prob import \
-    DeltaProbImportanceScoreEvaluator
-from ReAGent.src.rationalization.rationalizer.stopping_condition_evaluator.top_k import TopKStoppingConditionEvaluator
-from ReAGent.src.rationalization.rationalizer.token_replacement.token_replacer.uniform import UniformTokenReplacer
-from ReAGent.src.rationalization.rationalizer.token_replacement.token_sampler.postag import POSTagTokenSampler
+from rationalization.rationalizer.aggregate_rationalizer import AggregateRationalizer
+from rationalization.rationalizer.importance_score_evaluator.delta_prob import DeltaProbImportanceScoreEvaluator
+from rationalization.rationalizer.stopping_condition_evaluator.top_k import TopKStoppingConditionEvaluator
+from rationalization.rationalizer.token_replacement.token_replacer.uniform import UniformTokenReplacer
+from rationalization.rationalizer.token_replacement.token_sampler.postag import POSTagTokenSampler
 
-from ReAGent.src.evaluation.evaluator.soft_norm_sufficiency import SoftNormalizedSufficiencyEvaluator
-from ReAGent.src.evaluation.evaluator.soft_norm_comprehensiveness import SoftNormalizedComprehensivenessEvaluator
+from rationalization.src.evaluation.evaluator.soft_norm_sufficiency import SoftNormalizedSufficiencyEvaluator
+from rationalization.src.evaluation.evaluator.soft_norm_comprehensiveness import SoftNormalizedComprehensivenessEvaluator
 
 import csv
 
@@ -161,21 +160,21 @@ def main():
             top_n_ratio=rational_size_ratio
         )
     elif args.method == 'attention_last' or args.method == 'attention_rollout':
-        from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.attention import \
+        from rationalization.rationalizer.importance_score_evaluator.attention import \
             AttentionImportanceScoreEvaluator
         importance_score_evaluator = AttentionImportanceScoreEvaluator(
             model=mt.model,
             tokenizer=mt.tokenizer,
             attn_type=args.method.replace("attention_", "")
         )
-        from ReAGent.src.rationalization.rationalizer.sample_rationalizer import SampleRationalizer
+        from rationalization.rationalizer.sample_rationalizer import SampleRationalizer
         rationalizer = SampleRationalizer(
             importance_score_evaluator=importance_score_evaluator,
             top_n=3,
         )
     else:
         # assert args.method in ['integrated_gradients', 'input_x_gradient', 'attention', 'gradient_shap'] # input_x_gradient = signed in self written
-        from ReAGent.src.rationalization.rationalizer.importance_score_evaluator.inseq import \
+        from rationalization.rationalizer.importance_score_evaluator.inseq import \
             InseqImportanceScoreEvaluator
         importance_score_evaluator = InseqImportanceScoreEvaluator(
             model=mt.model,
@@ -184,7 +183,7 @@ def main():
             attribute_params={
             }
         )
-        from ReAGent.src.rationalization.rationalizer.sample_rationalizer import SampleRationalizer
+        from rationalization.rationalizer.sample_rationalizer import SampleRationalizer
         rationalizer = SampleRationalizer(
             importance_score_evaluator=importance_score_evaluator,
             top_n=3,
