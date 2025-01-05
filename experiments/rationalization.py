@@ -60,8 +60,12 @@ def extract_rationales(
         if not expect in answers:
             raise ValueError(f"'{expect}' is not in top-{topk} predictions.")
         index = answers.index(expect)
+        answer = expect
+        answer_t = answers_t[index]
         base_score = base_scores[index]
     else:
+        answer = answers[0]
+        answer_t = answers_t[0]
         base_score = base_scores[0]
 
     # Tokenize sentence into words and punctuation
@@ -69,7 +73,7 @@ def extract_rationales(
 
     results = {}
     low_scores = list()
-    differences = list()
+    scores = list()
 
     for word in tokens:
         flow = calculate_noisy_result(
@@ -78,27 +82,23 @@ def extract_rationales(
             token=word,
             noise=noise,
             uniform_noise=uniform_noise,
-            expect=expect,
+            expect=answer_t,
         )
 
-        ls = flow['low_score'] # low score
-        low_scores.append(ls)
+        low_scores.append(flow['low_score'])
 
-        s = main_score - ls
-        differences.append(s)
-
-    for k, v in flow.items():
-        results[k] = v
+        score = base_score - flow['low_score']
+        scores.append(score)
 
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
-    results['answer'] = expect
+    results['answer'] = answer
     results['base_score'] = base_score
     results['low_scores'] = torch.tensor(low_scores)
-    results['differences'] = torch.tensor(differences).unsqueeze(dim=0)
+    results['scores'] = torch.tensor(scores).unsqueeze(dim=0)
 
     if normalize:
-      results['differences'] = torch.softmax(results['differences'], dim=1)
+      results['scores'] = torch.softmax(results['scores'], dim=1)
 
     return results
 
