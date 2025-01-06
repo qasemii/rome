@@ -122,11 +122,20 @@ def main():
     if args.method == 'membre':
         nltk.download('punkt_tab')
 
-        print("Collecting embeddings std ...")
-        base_noise_level = collect_embedding_std(mt, [k["subject"] for k in dataset])
+        if os.path.exists(cache_dir):
+            print(f"Loading base_noise_level from {cache_dir}")
+            with open(file_path, 'r') as f:
+                base_noise_level = json.load(f)
+        else:
+            print("Collecting embeddings std ...")
+            base_noise_level = collect_embedding_std(mt, [k["subject"] for k in dataset])
+            print(f"Saving base_noise_level to {cache_dir}")
+            with open(cache_dir, 'w') as f:
+                json.dump(base_noise_level, f)
         print(f"Base noise level: {base_noise_level}")
 
-        kind = args.kind
+
+
     elif args.method == 'random':
         pass
     elif args.method == 'reagent':
