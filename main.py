@@ -77,6 +77,9 @@ def main():
     result_dir = f"{args.output_dir}{args.fact_file}/{args.model_name}"
     os.makedirs(result_dir, exist_ok=True)
 
+    cache_dir = f"cache/{args.model_name}"
+    os.makedirs(cache_dir, exist_ok=True)
+
     print('Loading model and tokenizer ...')
     mt = ModelAndTokenizer(
         args.model_name,
@@ -84,7 +87,7 @@ def main():
         torch_dtype=torch.float16,
         )
 
-    print(f"Loading {args.fact_file} dataset")
+    print(f"Loading {args.fact_file} dataset ...")
     if args.fact_file == "knowns":
         dataset = KnownsDataset(DATA_DIR)
     elif args.fact_file == "counterfact":
@@ -122,15 +125,15 @@ def main():
     if args.method == 'membre':
         nltk.download('punkt_tab')
 
-        if os.path.exists(cache_dir):
+        if os.path.exists(f'{cache_dir}/base_noise_level.json'):
             print(f"Loading base_noise_level from {cache_dir}")
-            with open(file_path, 'r') as f:
+            with open(f'{cache_dir}/base_noise_level.json', 'r') as f:
                 base_noise_level = json.load(f)
         else:
             print("Collecting embeddings std ...")
             base_noise_level = collect_embedding_std(mt, [k["subject"] for k in dataset])
-            print(f"Saving base_noise_level to {cache_dir}")
-            with open(cache_dir, 'w') as f:
+            print(f"Saving base_noise_level to {cache_dir}/base_noise_level.json")
+            with open(f'{cache_dir}/base_noise_level.json', 'w') as f:
                 json.dump(base_noise_level, f)
         print(f"Base noise level: {base_noise_level}")
 
