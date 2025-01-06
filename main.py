@@ -208,7 +208,6 @@ def main():
             ers = extract_rationales(
                 mt,
                 data["prompt"],
-                kind=kind,
                 noise=3*base_noise_level,
                 uniform_noise=uniform_noise,
             )

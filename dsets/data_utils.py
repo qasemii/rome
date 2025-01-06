@@ -6,8 +6,6 @@ from util.globals import DATA_DIR
 from experiments.utils import (
     ModelAndTokenizer,
     layername,
-    guess_subject,
-    plot_trace_heatmap,
 )
 
 from dsets import KnownsDataset, CounterFactDataset
