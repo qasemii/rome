@@ -218,7 +218,8 @@ def main():
                     noise=3 * base_noise_level,
                     uniform_noise=uniform_noise,
                 )
-                scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
+                # scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
+                scores = ers['scores']
             else:
                 rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
                 scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)

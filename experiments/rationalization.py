@@ -85,7 +85,8 @@ def extract_rationales(
             expect=answer_t,
         )
 
-        low_scores.append(flow['low_score'])
+        n_extend = flow['token_range'][1] - flow['token_range'][0]
+        low_scores.extend(flow['low_score']*n_extend)
 
         score = base_score - flow['low_score']
         scores.append(score)

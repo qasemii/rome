@@ -113,7 +113,6 @@ def calculate_noisy_result(
 
     try:
         e_range = find_token_range(mt.tokenizer, input["input_ids"][0], token)
-
         low_score, rank = make_noisy_embeddings(
             mt.model, input, expect, e_range, noise=noise, uniform_noise=uniform_noise
         )
@@ -125,7 +124,7 @@ def calculate_noisy_result(
 
     return dict(
         low_score=low_score.item(),
-        subject_range=e_range,
+        token_range=e_range,
         low_rank=rank,
     )
 
