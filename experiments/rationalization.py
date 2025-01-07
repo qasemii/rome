@@ -75,7 +75,7 @@ def extract_rationales(
     low_scores = list()
     scores = list()
     search_start = 0
-    for token in zip(tokens):
+    for token in tokens:
         token = '``' if token=='"' else token
 
         try:
