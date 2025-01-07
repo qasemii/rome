@@ -56,4 +56,26 @@ def match_tokens_with_scores(mt, data, ers):
 
     return torch.tensor(test).unsqueeze(dim=0)
 
+def check_whitespace(prompt, tokens):
+    results = []
+    search_start = 0  # Track the current search position in the prompt
+
+    for token in tokens:
+        # breakpoint()
+        # Find the starting index of the token from the current position
+        start_index = prompt.find(token, search_start)
+
+        has_whitespace_before = start_index > 0 and prompt[start_index - 1].isspace()
+
+        if has_whitespace_before:
+            token = " " + token
+            results.append(token)
+        else:
+            results.append(token)
+
+        # Update position to search for the next token
+        search_start = search_start + len(token)
+
+    return results
+
 

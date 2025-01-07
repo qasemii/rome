@@ -18,6 +18,7 @@ from experiments.utils import (
     count_occurrences,
 )
 from dsets import KnownsDataset
+from dsets.data_utils import check_whitespace
 
 import random
 import shutil
@@ -70,14 +71,14 @@ def extract_rationales(
 
     # Tokenize sentence into words and punctuation
     tokens = nltk.word_tokenize(prompt)
+    tokens = ['"' if token in ['``', "''"] else token for token in tokens]
+    tokens = check_whitespace(prompt, tokens)
 
     results = {}
     low_scores = list()
     scores = list()
     search_start = 0
     for token in tokens:
-        token = '``' if token=='"' else token
-
         try:
             token_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, search_start)
             low_score, rank = make_noisy_embeddings(
@@ -88,7 +89,8 @@ def extract_rationales(
             low_score = torch.tensor(0, device=mt.model.device)
             token_range = None
             rank = None
-        search_start = search_start + len(token) + 1 # 1 is for whitespace
+
+        search_start = search_start + len(token) # 1 is for whitespace
 
         low_score=low_score.item()
         low_scores.append(low_score)
