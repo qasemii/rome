@@ -1,6 +1,8 @@
 import os, re, json
 import torch, numpy
 from collections import defaultdict
+
+from rationalization.src.data.prepare_evaluation_analogy import device
 from util import nethook
 from util.globals import DATA_DIR
 from experiments.utils import (
@@ -85,16 +87,17 @@ def extract_rationales(
             expect=answer_t,
         )
 
+        low_scores.append(flow['low_score'])
+
         n_extend = flow['token_range'][1] - flow['token_range'][0]
-        low_scores.extend([flow['low_score']]*n_extend)
-        scores.append([base_score - flow['low_score']]*n_extend)
+        scores.extend([base_score - flow['low_score']]*n_extend)
 
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
     results['answer'] = answer
     results['base_score'] = base_score
     results['low_scores'] = torch.tensor(low_scores)
-    results['scores'] = torch.tensor(scores).unsqueeze(dim=0)
+    results['scores'] = torch.tensor(scores, device=mt.model.device).unsqueeze(dim=0)
 
     if normalize:
       results['scores'] = torch.softmax(results['scores'], dim=1)
