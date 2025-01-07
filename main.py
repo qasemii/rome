@@ -48,7 +48,7 @@ device = "cuda"
 
 random.seed(42)
 torch.manual_seed(42)
-torch.use_deterministic_algorithms(True, warn_only=True)
+# torch.use_deterministic_algorithms(True, warn_only=True)
 torch.set_grad_enabled(False)
 
 
@@ -62,7 +62,7 @@ def main():
     aa("--fact_file", default="knowns")
     aa("--output_dir", default=f"results/")
     aa("--n_samples", default=-1, type=int)
-    aa("--max_new_tokens", default=-1, type=int)
+    aa("--max_new_tokens", default=1, type=int)
     aa("--method",
        type=str,
        default="integrated_gradients",
@@ -85,7 +85,7 @@ def main():
         low_cpu_mem_usage=True,
         torch_dtype=torch.float16,
     )
-    # mt.tokenizer.pad_token = mt.tokenizer.eos_token
+    pad_token_id = mt.tokenizer.pad_token_id if mt.tokenizer.pad_token_id is not None else mt.tokenizer.eos_token_id
 
     print(f"Loading {args.fact_file} dataset ...")
     if args.fact_file == "knowns":
@@ -106,21 +106,6 @@ def main():
     replacing = 0.1
     max_step = 3000
     batch = 3
-
-    # print("Getting model's predictions...")
-    # predictions = []
-    # for data in tqdm(dataset):
-    #     p = predict_token(
-    #         mt,
-    #         [data["prompt"]],  # original/relevant/irrelevant/counterfact
-    #         return_p=True,
-    #         topk=10
-    #     )
-    #     predictions.append(p)
-    #
-    # true_predictions_idx = [i for i, r in enumerate(predictions) if
-    #                         predictions[i][0][0].strip() == dataset[i]['target']]
-    # print(f"Number of True predictions: {len(true_predictions_idx)}/{len(dataset)}")
 
     if args.method == 'membre':
         nltk.download('punkt_tab')
@@ -210,11 +195,16 @@ def main():
     samples = dataset if args.n_samples == -1 else random.choices(dataset, k=args.n_samples)
     for data in tqdm(samples):
         idx = data['id']
-        input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
 
-        generated_ids = \
-        mt.model.generate(input_ids=torch.unsqueeze(input_ids, 0), max_new_tokens=args.max_new_tokens, do_sample=False)[
-            0]
+        input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
+        attention_mask = mt.tokenizer(data["prompt"], return_tensors='pt')['attention_mask'][0].to(mt.model.device)
+        # breakpoint()
+        generated_ids = mt.model.generate(input_ids=torch.unsqueeze(input_ids, 0),
+                                          attention_mask=torch.unsqueeze(attention_mask, 0),
+                                          max_new_tokens=args.max_new_tokens,
+                                          do_sample=False,
+                                          pad_token_id=pad_token_id)[0]
+
         # generated_texts = [gptmt.tokenizer.decode(token) for token in generated_ids]
         # print(f'generated full sequence --> {generated_texts}')
 
@@ -229,26 +219,27 @@ def main():
                     uniform_noise=uniform_noise,
                 )
                 scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
-            elif args.method == 'random':
-                scores = torch.softmax(
-                    torch.rand(torch.unsqueeze(generated_ids[:target_pos], 0).shape, device=mt.model.device), dim=-1)
             else:
                 rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
                 scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
 
             # importance score by Random Score
-            # random_scores = torch.softmax(torch.rand(scores.shape, device=mt.model.device), dim=-1)
+            rand_scores = torch.softmax(
+                torch.rand(torch.unsqueeze(generated_ids[:target_pos], 0).shape, device=mt.model.device), dim=-1)
+
             try:
                 # compute Soft-NS and Soft-NC on source importance score
                 source_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
                                                                         torch.unsqueeze(target_id, 0), scores)
                 source_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
                                                                         torch.unsqueeze(target_id, 0), scores)
-                print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
+                # print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
 
-                # # compute Soft-NS and Soft-NC on random importance score
-                # random_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
-                # random_soft_nc_step = soft_norm_comp_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
+                # compute Soft-NS and Soft-NC on random importance score
+                random_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
+                                                                        torch.unsqueeze(target_id, 0), rand_scores)
+                random_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
+                                                                        torch.unsqueeze(target_id, 0), rand_scores)
                 # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
 
                 # # compute metrics on Soft-NS and Soft-NC

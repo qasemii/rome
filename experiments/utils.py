@@ -116,19 +116,15 @@ def calculate_noisy_result(
 
     try:
         e_range = find_token_range(mt.tokenizer, input["input_ids"][0], token)
+
+        low_score, rank = make_noisy_embeddings(
+            mt.model, input, expect, e_range, noise=noise, uniform_noise=uniform_noise
+        )
     except:
-        print(f"Couldn't find any token range for {token}.")
-        print("Attempting dummy token range ...")
-        e_range = (-2, -1)
-
-    if token_range == "subject_last":
-        token_range = [e_range[1] - 1]
-    elif token_range is not None:
-        raise ValueError(f"Unknown token_range: {token_range}")
-
-    low_score, rank = make_noisy_embeddings(
-        mt.model, input, expect, e_range, noise=noise, uniform_noise=uniform_noise
-    )
+        print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
+        low_score = torch.tensor(0, device=mt.device)
+        e_range = None
+        rank = None
 
     return dict(
         low_score=low_score.item(),
