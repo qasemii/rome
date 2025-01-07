@@ -86,10 +86,8 @@ def extract_rationales(
         )
 
         n_extend = flow['token_range'][1] - flow['token_range'][0]
-        low_scores.extend(flow['low_score']*n_extend)
-
-        score = base_score - flow['low_score']
-        scores.append(score)
+        low_scores.extend([flow['low_score']]*n_extend)
+        scores.append([base_score - flow['low_score']]*n_extend)
 
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
