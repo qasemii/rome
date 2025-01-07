@@ -80,9 +80,9 @@ def extract_rationales(
         token = '``' if token=='"' else token
 
         try:
-            token_range = find_token_range(mt.tokenizer, input["input_ids"][0], token, start=search_start)
+            token_range = find_token_range(mt.tokenizer, input["input_ids"][0], token, search_start)
             low_score, rank = make_noisy_embeddings(
-                mt.model, input, expect, e_range, noise=noise, uniform_noise=uniform_noise
+                mt.model, input, expect, token_range, noise=noise, uniform_noise=uniform_noise
             )
         except:
             print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
@@ -92,7 +92,7 @@ def extract_rationales(
         search_start = search_start + len(token) + 1 # 1 is for whitespace
 
         low_score=low_score.item()
-        low_scores.append(low_score.item())
+        low_scores.append(low_score)
 
         n_extend = token_range[1] - token_range[0]
         scores.extend([base_score - low_score]*n_extend)
