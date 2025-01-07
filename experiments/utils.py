@@ -64,16 +64,13 @@ def make_noisy_embeddings(
 
     embed_layername = layername(model, 0, "embed")
 
-    def untuple(x):
-        return x[0] if isinstance(x, tuple) else x
-
     # Define the model-patching rule.
     if isinstance(noise, float):
         noise_fn = lambda x: noise * x
     else:
         noise_fn = noise
 
-    def patch_rep(x, layer):
+    def patch_rep(x):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
         if tokens_to_mix is not None:
             b, e = tokens_to_mix
@@ -113,6 +110,7 @@ def calculate_noisy_result(
     expect=None,
 ):
     token = '``' if token=='"' else token
+
     try:
         e_range = find_token_range(mt.tokenizer, input["input_ids"][0], token)
 
