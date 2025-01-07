@@ -39,7 +39,8 @@ from rationalization.rationalizer.token_replacement.token_replacer.uniform impor
 from rationalization.rationalizer.token_replacement.token_sampler.postag import POSTagTokenSampler
 
 from rationalization.src.evaluation.evaluator.soft_norm_sufficiency import SoftNormalizedSufficiencyEvaluator
-from rationalization.src.evaluation.evaluator.soft_norm_comprehensiveness import SoftNormalizedComprehensivenessEvaluator
+from rationalization.src.evaluation.evaluator.soft_norm_comprehensiveness import \
+    SoftNormalizedComprehensivenessEvaluator
 
 import csv
 
@@ -58,17 +59,15 @@ def main():
         parser.add_argument(*args, **kwargs)
 
     aa("--model_name", default="gpt2-medium")
-    aa("--kind", default="mlp", type=str)
     aa("--fact_file", default="knowns")
     aa("--output_dir", default=f"results/")
-    aa("--noise_level", default=None, type=float)
-    aa("--n_samples", default=100, type=int)
+    aa("--n_samples", default=-1, type=int)
+    aa("--max_new_tokens", default=-1, type=int)
     aa("--method",
        type=str,
        default="integrated_gradients",
-       help="membre, reagent, \
-        attention, attention_last, attention_rollout, \
-        gradient_shap, input_x_gradient, integrated_gradients, lime")  # TODO
+       help="membre, reagent, attention, attention_last, attention_rollout, \
+             gradient_shap, input_x_gradient, integrated_gradients, lime")  # TODO
 
     args = parser.parse_args()
 
@@ -85,7 +84,8 @@ def main():
         args.model_name,
         low_cpu_mem_usage=True,
         torch_dtype=torch.float16,
-        )
+    )
+    # mt.tokenizer.pad_token = mt.tokenizer.eos_token
 
     print(f"Loading {args.fact_file} dataset ...")
     if args.fact_file == "knowns":
@@ -136,9 +136,6 @@ def main():
             with open(f'{cache_dir}/base_noise_level.json', 'w') as f:
                 json.dump(base_noise_level, f)
         print(f"Base noise level: {base_noise_level}")
-
-
-
     elif args.method == 'random':
         pass
     elif args.method == 'reagent':
@@ -207,68 +204,73 @@ def main():
 
     print("Starting rationalization ...")
     results = {}
-    samples = random.choices(dataset, k=args.n_samples)
-    for s in tqdm(samples):
-        idx = s['id']
-        results[idx] = {}
-        data = s
+    source_soft_ns = []
+    source_soft_nc = []
 
+    samples = dataset if args.n_samples == -1 else random.choices(dataset, k=args.n_samples)
+    for data in tqdm(samples):
+        idx = data['id']
         input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
-        target_id = mt.tokenizer((" "+data["target"]), return_tensors='pt')['input_ids'][0].squeeze(dim=0).to(mt.model.device)
 
-        if args.method == 'membre':
-            ers = extract_rationales(
-                mt,
-                data["prompt"],
-                noise=3*base_noise_level,
-                uniform_noise=uniform_noise,
-            )
-            # save(ers, filename)
-            # breakpoint()
-            scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
-            results[idx]["membre"] = ers
-        elif args.method == 'random':
-            scores = torch.softmax(torch.rand(input_ids.unsqueeze(dim=0).shape, device=mt.model.device), dim=-1)
-        else:
-            # rationalization
-            rationalizer.rationalize(input_ids.unsqueeze(dim=0), target_id.unsqueeze(dim=0))
-            scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
+        generated_ids = \
+        mt.model.generate(input_ids=torch.unsqueeze(input_ids, 0), max_new_tokens=args.max_new_tokens, do_sample=False)[
+            0]
+        # generated_texts = [gptmt.tokenizer.decode(token) for token in generated_ids]
+        # print(f'generated full sequence --> {generated_texts}')
 
-        input_ids_step = torch.unsqueeze(input_ids, 0)
-        target_id_step = torch.unsqueeze(target_id, 0)
+        for target_pos in torch.arange(input_ids.shape[0], generated_ids.shape[0]):
+            target_id = generated_ids[target_pos]
 
-        # importance score by Random Score
-        # random_scores = torch.softmax(torch.rand(scores.shape, device=mt.model.device), dim=-1)
-        try:
-            # compute Soft-NS and Soft-NC on source importance score
-            source_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, scores)
-            source_soft_nc_step = soft_norm_comp_evaluator.evaluate(input_ids_step, target_id_step, scores)
-            print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
+            if args.method == 'membre':
+                ers = extract_rationales(
+                    mt,
+                    mt.tokenizer.decode(generated_ids[:target_pos]),  # data["prompt"]
+                    noise=3 * base_noise_level,
+                    uniform_noise=uniform_noise,
+                )
+                scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
+            elif args.method == 'random':
+                scores = torch.softmax(
+                    torch.rand(torch.unsqueeze(generated_ids[:target_pos], 0).shape, device=mt.model.device), dim=-1)
+            else:
+                rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
+                scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
 
-            # # compute Soft-NS and Soft-NC on random importance score
-            # random_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
-            # random_soft_nc_step = soft_norm_comp_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
-            # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
+            # importance score by Random Score
+            # random_scores = torch.softmax(torch.rand(scores.shape, device=mt.model.device), dim=-1)
+            try:
+                # compute Soft-NS and Soft-NC on source importance score
+                source_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
+                                                                        torch.unsqueeze(target_id, 0), scores)
+                source_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
+                                                                        torch.unsqueeze(target_id, 0), scores)
+                print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
 
-            # # compute metrics on Soft-NS and Soft-NC
-            # metric_soft_ns = torch.log(source_soft_ns_step / random_soft_ns_step)
-            # metric_soft_nc = torch.log(source_soft_nc_step / random_soft_nc_step)
-            # print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
+                # # compute Soft-NS and Soft-NC on random importance score
+                # random_soft_ns_step = soft_norm_suff_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
+                # random_soft_nc_step = soft_norm_comp_evaluator.evaluate(input_ids_step, target_id_step, random_scores)
+                # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
 
+                # # compute metrics on Soft-NS and Soft-NC
+                # metric_soft_ns = torch.log(source_soft_ns_step / random_soft_ns_step)
+                # metric_soft_nc = torch.log(source_soft_nc_step / random_soft_nc_step)
+                # print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
 
-            results[idx] = {'scores': scores.squeeze(),
-                            'source_soft_ns': source_soft_ns_step.item(),
-                            'source_soft_nc': source_soft_nc_step.item(),}
-                            # 'random_soft_ns': random_soft_ns_step.item(),
-                            # 'random_soft_nc': random_soft_nc_step.item(),}
-        except:
-            print(f"Unable to get the score for {idx}")
-            continue
+                source_soft_ns.append(source_soft_ns_step.item())
+                source_soft_nc.append(source_soft_nc_step.item())
+
+            except:
+                print(f"Unable to get the score for {idx}")
+                continue
+
+    results = {'source_soft_ns': source_soft_ns,
+               'source_soft_nc': source_soft_nc}
+    # 'random_soft_ns': random_soft_ns_step.item(),
+    # 'random_soft_nc': random_soft_nc_step.item(),}
     # export results
     Path(result_dir).mkdir(exist_ok=True, parents=True)
     with open(os.path.join(result_dir, f'{args.method}.pkl'), 'wb') as outfile:
         pickle.dump(results, outfile)
-
 
 
 if __name__ == "__main__":
