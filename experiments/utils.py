@@ -100,36 +100,6 @@ def make_noisy_embeddings(
 
     return prob, rank
 
-
-def calculate_noisy_result(
-    mt,
-    input,
-    token,
-    occurrence=0,
-    noise=0.1,
-    uniform_noise=False,
-    expect=None,
-):
-    token = '``' if token=='"' else token
-
-    try:
-        e_range = find_token_range(mt.tokenizer, input["input_ids"][0], token, n=occurrence)
-        low_score, rank = make_noisy_embeddings(
-            mt.model, input, expect, e_range, noise=noise, uniform_noise=uniform_noise
-        )
-    except:
-        print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
-        low_score = torch.tensor(0, device=mt.model.device)
-        e_range = None
-        rank = None
-
-    return dict(
-        low_score=low_score.item(),
-        token_range=e_range,
-        low_rank=rank,
-    )
-
-
 class ModelAndTokenizer:
     """
     An object to hold on to (or automatically download and hold)
@@ -237,18 +207,10 @@ def decode_tokens(tokenizer, token_array):
     return [tokenizer.decode([t]) for t in token_array]
 
 
-def find_token_range(tokenizer, token_array, substring, n=0):
-
+def find_token_range(tokenizer, token_array, substring, start):
     toks = decode_tokens(tokenizer, token_array)
     whole_string = "".join(toks)
-    char_loc = -1
-
-    # Find the character location of the n-th occurrence of the substring
-    for _ in range(n+1):
-        char_loc = whole_string.find(substring, char_loc + 1)
-        if char_loc == -1:  # If the n-th occurrence doesn't exist
-            raise ValueError(f"The substring '{substring}' does not occur {n} times in the input.")
-
+    char_loc = whole_string.index(substring, start)
     loc = 0
     tok_start, tok_end = None, None
     for i, t in enumerate(toks):
@@ -258,7 +220,6 @@ def find_token_range(tokenizer, token_array, substring, n=0):
         if tok_end is None and loc >= char_loc + len(substring):
             tok_end = i + 1
             break
-
     return (tok_start, tok_end)
 
 def count_occurrences(words):

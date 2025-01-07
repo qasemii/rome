@@ -16,6 +16,7 @@ from experiments.utils import (
     collect_embedding_std,
     make_noisy_embeddings,
     calculate_noisy_result,
+    count_occurrences,
 )
 from dsets import KnownsDataset
 
@@ -75,22 +76,27 @@ def extract_rationales(
     results = {}
     low_scores = list()
     scores = list()
+    search_start = 0
+    for token, occurrence in zip(tokens, occurrences):
+        token = '``' if token=='"' else token
 
-    for word, occurrence in zip(tokens, occurrences):
-        flow = calculate_noisy_result(
-            mt,
-            input=inp,
-            token=word,
-            occurrence=occurrence,
-            noise=noise,
-            uniform_noise=uniform_noise,
-            expect=answer_t,
-        )
+        try:
+            token_range = find_token_range(mt.tokenizer, input["input_ids"][0], token, start=search_start)
+            low_score, rank = make_noisy_embeddings(
+                mt.model, input, expect, e_range, noise=noise, uniform_noise=uniform_noise
+            )
+        except:
+            print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
+            low_score = torch.tensor(0, device=mt.model.device)
+            token_range = None
+            rank = None
+        search_start = search_start + len(token) + 1 # 1 is for whitespace
 
-        low_scores.append(flow['low_score'])
+        low_score=low_score.item()
+        low_scores.append(low_score.item())
 
-        n_extend = flow['token_range'][1] - flow['token_range'][0]
-        scores.extend([base_score - flow['low_score']]*n_extend)
+        n_extend = token_range[1] - token_range[0]
+        scores.extend([base_score - low_score]*n_extend)
 
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
@@ -103,8 +109,6 @@ def extract_rationales(
       results['scores'] = torch.softmax(results['scores'], dim=1)
 
     return results
-
-    # plot_rationales(results, savepdf)
 
 
 def plot_rationales(result, topk=None, savepdf=None, modelname=None):
