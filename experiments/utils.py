@@ -112,7 +112,7 @@ def calculate_noisy_result(
     uniform_noise=False,
     expect=None,
 ):
-    token = '``' if token=='"' else pass
+    token = '``' if token=='"' else token
     try:
         e_range = find_token_range(mt.tokenizer, input["input_ids"][0], token)
 
