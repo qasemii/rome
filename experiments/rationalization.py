@@ -15,7 +15,6 @@ from experiments.utils import (
     predict_from_input,
     collect_embedding_std,
     make_noisy_embeddings,
-    calculate_noisy_result,
     count_occurrences,
 )
 from dsets import KnownsDataset
