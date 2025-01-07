@@ -70,13 +70,12 @@ def extract_rationales(
 
     # Tokenize sentence into words and punctuation
     tokens = nltk.word_tokenize(prompt)
-    occurrences = count_occurrences(tokens)
 
     results = {}
     low_scores = list()
     scores = list()
     search_start = 0
-    for token, occurrence in zip(tokens, occurrences):
+    for token in zip(tokens):
         token = '``' if token=='"' else token
 
         try:
