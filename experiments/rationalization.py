@@ -3,6 +3,13 @@ import torch, numpy
 from collections import defaultdict
 from util import nethook
 from util.globals import DATA_DIR
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    Qwen2ForCausalLM,
+    Gemma2ForCausalLM,
+    LlamaForCausalLM,
+)
+from hf_olmo import OLMoForCausalLM
 from experiments.utils import (
     ModelAndTokenizer,
     layername,
@@ -76,7 +83,7 @@ def extract_rationales(
 
     results = {}
     low_scores = list()
-    scores = list()
+    scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) else []
     search_start = 0
     for token in tokens:
         try:

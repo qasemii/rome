@@ -122,7 +122,7 @@ def main():
             with open(f'{cache_dir}/base_noise_level.json', 'w') as f:
                 json.dump(base_noise_level, f)
         print(f"Base noise level: {base_noise_level}")
-        noise_level = args.noise_coef*base_noise_level
+        noise_level = args.noise_coef * base_noise_level
     elif args.method == 'random':
         pass
     elif args.method == 'reagent':

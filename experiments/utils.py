@@ -134,9 +134,8 @@ class ModelAndTokenizer:
             model = AutoModelForCausalLM.from_pretrained(
                 model_name, **model_kwargs
             )
-
-            if adapter_name_or_path is not None:
-                model.load_adapter(adapter_name_or_path)
+            if isinstance(model, OLMoForCausalLM):
+                model.tie_weights()
 
             model.eval()#.cuda()
 
