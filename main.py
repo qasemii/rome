@@ -63,6 +63,7 @@ def main():
     aa("--output_dir", default=f"results/")
     aa("--n_samples", default=-1, type=int)
     aa("--max_new_tokens", default=1, type=int)
+    aa("--noise_coef", default=3, type=int)
     aa("--method",
        type=str,
        default="integrated_gradients",
@@ -121,6 +122,7 @@ def main():
             with open(f'{cache_dir}/base_noise_level.json', 'w') as f:
                 json.dump(base_noise_level, f)
         print(f"Base noise level: {base_noise_level}")
+        noise_level = args.noise_coef*base_noise_level
     elif args.method == 'random':
         pass
     elif args.method == 'reagent':
@@ -188,7 +190,6 @@ def main():
     soft_norm_comp_evaluator = SoftNormalizedComprehensivenessEvaluator(mt.model)
 
     print("Starting rationalization ...")
-    results = {}
     source_soft_ns = []
     source_soft_nc = []
 
@@ -215,7 +216,7 @@ def main():
                 ers = extract_rationales(
                     mt,
                     mt.tokenizer.decode(generated_ids[:target_pos]),  # data["prompt"]
-                    noise=3 * base_noise_level,
+                    noise=noise_level,
                     uniform_noise=uniform_noise,
                 )
                 # scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
