@@ -80,7 +80,7 @@ def extract_rationales(
         token = '``' if token=='"' else token
 
         try:
-            token_range = find_token_range(mt.tokenizer, input["input_ids"][0], token, search_start)
+            token_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, search_start)
             low_score, rank = make_noisy_embeddings(
                 mt.model, input, expect, token_range, noise=noise, uniform_noise=uniform_noise
             )
