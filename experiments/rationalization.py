@@ -1,8 +1,6 @@
 import os, re, json
 import torch, numpy
 from collections import defaultdict
-
-from rationalization.src.data.prepare_evaluation_analogy import device
 from util import nethook
 from util.globals import DATA_DIR
 from experiments.utils import (
