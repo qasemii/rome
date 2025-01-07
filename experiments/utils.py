@@ -122,7 +122,7 @@ def calculate_noisy_result(
         )
     except:
         print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
-        low_score = torch.tensor(0, device=mt.device)
+        low_score = torch.tensor(0, device=mt.model.device)
         e_range = None
         rank = None
 
