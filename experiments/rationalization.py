@@ -70,16 +70,18 @@ def extract_rationales(
 
     # Tokenize sentence into words and punctuation
     tokens = nltk.word_tokenize(prompt)
+    occurrences = count_occurrences(tokens)
 
     results = {}
     low_scores = list()
     scores = list()
 
-    for word in tokens:
+    for word, occurrence in zip(tokens, occurrences):
         flow = calculate_noisy_result(
             mt,
             input=inp,
             token=word,
+            occurrence=occurrence,
             noise=noise,
             uniform_noise=uniform_noise,
             expect=answer_t,
