@@ -82,7 +82,7 @@ def extract_rationales(
         try:
             token_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, search_start)
             low_score, rank = make_noisy_embeddings(
-                mt.model, input, expect, token_range, noise=noise, uniform_noise=uniform_noise
+                mt.model, inp, answer_t, token_range, noise=noise, uniform_noise=uniform_noise
             )
         except:
             print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
