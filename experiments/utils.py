@@ -228,20 +228,21 @@ def predict_token(mt, prompts, topk=None):
 
     if topk:
         probs, preds = torch.topk(probs, topk, sorted=True, dim=-1)
+        result = [
+            (mt.tokenizer.decode(pred.item()), prob.item())
+            for pred, prob in zip(preds.squeeze(0), probs.squeeze(0))  # Squeeze batch dimension for single prompt
+        ]
+
     else:
         probs, preds = torch.max(probs, dim=-1, keepdim=True)  # Keep dims for consistency
-
-    result = [
-        (mt.tokenizer.decode(pred.item()), prob.item())
-        for pred, prob in zip(preds.squeeze(0), probs.squeeze(0))  # Squeeze batch dimension for single prompt
-    ]
+        result = (mt.tokenizer.decode(preds.squeeze(0).item()), probs.squeeze(0).item())
 
     return result
 
 
 def predict_from_input(model, inp):
     logits = model(**inp)["logits"]
-    probs = torch.softmax(logits[:, -1], dim=1)
+    probs = torch.softmax(logits[:, -1, :], dim=1)
 
     return probs
 

@@ -51,35 +51,20 @@ def extract_rationales(
         samples=10,
         noise=0.1,
         uniform_noise=False,
-        expect=None,
-        topk=None,
+        mode=None,
         normalize=False,
 ):
     # Llama and Gemma add bos token
     inp = make_inputs(mt.tokenizer, [prompt] * (samples + 1))
     with torch.no_grad():
-        answers_t, base_scores = [d[0] for d in predict_from_input(mt.model, inp, topk=topk)]
+        base_scores = predict_from_input(mt.model, inp)
 
-    answers = decode_tokens(mt.tokenizer, answers_t)
-    answers = [a.strip() for a in answers]
-
-    if expect is not None:
-        if topk is None:
-            raise ValueError("topk is None.")
-        if not expect in answers:
-            raise ValueError(f"'{expect}' is not in top-{topk} predictions.")
-        index = answers.index(expect)
-        answer = expect
-        answer_t = answers_t[index]
-        base_score = base_scores[index]
-    else:
-        answer = answers[0]
-        answer_t = answers_t[0]
-        base_score = base_scores[0]
+    answer = predict_token(mt, [prompt])[0]
+    answer_t = mt.tokeizer.encode(expect)
+    base_score = base_scores[answer_t]
 
     # Tokenize sentence into words and punctuation
     tokens = nltk.word_tokenize(prompt)
-    # breakpoint()
     tokens = ['"' if token in ['``', "''"] else token for token in tokens]
     tokens = check_whitespace(prompt, tokens)
 
@@ -97,7 +82,6 @@ def extract_rationales(
             print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
             low_score = torch.tensor(0, device=mt.model.device)
             token_range = None
-            rank = None
 
         search_start = search_start + len(token)  # 1 is for whitespace
 
