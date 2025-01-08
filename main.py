@@ -230,7 +230,7 @@ def main():
                 )
                 scores = ers['scores']
             else:
-                rationalizer.rationalize(torch.unsqueeze(generated_ids[start_pos:target_pos], 0), torch.unsqueeze(target_id, 0))
+                rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
                 scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
 
             # importance score by Random Score
