@@ -196,9 +196,9 @@ def main():
     soft_norm_suff_evaluator = SoftNormalizedSufficiencyEvaluator(mt.model)
     soft_norm_comp_evaluator = SoftNormalizedComprehensivenessEvaluator(mt.model)
 
-    print("Starting rationalization ...")
     source_soft_ns = []
     source_soft_nc = []
+    print("Starting rationalization ...")
 
     samples = dataset if args.n_samples == -1 else random.choices(dataset, k=args.n_samples)
     for data in tqdm(samples):
@@ -206,15 +206,17 @@ def main():
 
         input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
         attention_mask = mt.tokenizer(data["prompt"], return_tensors='pt')['attention_mask'][0].to(mt.model.device)
-        # breakpoint()
+
         generated_ids = mt.model.generate(input_ids=torch.unsqueeze(input_ids, 0),
                                           attention_mask=torch.unsqueeze(attention_mask, 0),
                                           max_new_tokens=args.max_new_tokens,
                                           do_sample=False,
                                           pad_token_id=pad_token_id)[0]
 
-        # generated_texts = [gptmt.tokenizer.decode(token) for token in generated_ids]
+        # generated_texts = mt.tokenizer.decode(generated_ids) for token in generated_ids
         # print(f'generated full sequence --> {generated_texts}')
+
+        # Gemma and Llama add [bos] token which should be exclude from input prompt when
         start_pos = 1 if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else 0
         for target_pos in torch.arange(input_ids.shape[0], generated_ids.shape[0]):
             target_id = generated_ids[target_pos]
@@ -226,10 +228,9 @@ def main():
                     noise=noise_level,
                     uniform_noise=uniform_noise,
                 )
-                # scores = match_tokens_with_scores(mt, data=data, ers=ers).to(mt.model.device)
                 scores = ers['scores']
             else:
-                rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
+                rationalizer.rationalize(torch.unsqueeze(generated_ids[start_pos:target_pos], 0), torch.unsqueeze(target_id, 0))
                 scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
 
             # importance score by Random Score
@@ -245,10 +246,10 @@ def main():
                 # print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
 
                 # compute Soft-NS and Soft-NC on random importance score
-                # random_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
-                #                                                         torch.unsqueeze(target_id, 0), rand_scores)
-                # random_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
-                #                                                         torch.unsqueeze(target_id, 0), rand_scores)
+                random_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
+                                                                        torch.unsqueeze(target_id, 0), rand_scores)
+                random_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
+                                                                        torch.unsqueeze(target_id, 0), rand_scores)
                 # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
 
                 # # compute metrics on Soft-NS and Soft-NC
