@@ -22,7 +22,6 @@ from experiments.utils import (
     predict_from_input,
     collect_embedding_std,
     make_noisy_embeddings,
-    count_occurrences,
 )
 from dsets import KnownsDataset
 from dsets.data_utils import check_whitespace

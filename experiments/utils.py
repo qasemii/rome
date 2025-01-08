@@ -221,18 +221,6 @@ def find_token_range(tokenizer, token_array, substring, start):
             break
     return (tok_start, tok_end)
 
-def count_occurrences(words):
-    word_counts = {}
-    result = []
-
-    for word in words:
-        if word not in word_counts:
-            word_counts[word] = 0
-        result.append(word_counts[word])
-        word_counts[word] += 1
-
-    return result
-
 def predict_token(mt, prompts, return_p=False, topk=None):
     inp = make_inputs(mt.tokenizer, prompts)
     preds, p = predict_from_input(mt.model, inp, topk=topk)
