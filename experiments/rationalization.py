@@ -45,16 +45,18 @@ torch.set_grad_enabled(False)
 
 nltk.download('punkt_tab')
 
+
 def extract_rationales(
-    mt,
-    prompt,
-    samples=10,
-    noise=0.1,
-    uniform_noise=False,
-    expect=None,
-    topk=None,
-    normalize=False,
+        mt,
+        prompt,
+        samples=10,
+        noise=0.1,
+        uniform_noise=False,
+        expect=None,
+        topk=None,
+        normalize=False,
 ):
+    # Llama and Gemma add bos token
     inp = make_inputs(mt.tokenizer, [prompt] * (samples + 1))
     with torch.no_grad():
         answers_t, base_scores = [d[0] for d in predict_from_input(mt.model, inp, topk=topk)]
@@ -78,12 +80,13 @@ def extract_rationales(
 
     # Tokenize sentence into words and punctuation
     tokens = nltk.word_tokenize(prompt)
+    # breakpoint()
     tokens = ['"' if token in ['``', "''"] else token for token in tokens]
     tokens = check_whitespace(prompt, tokens)
 
     results = {}
     low_scores = list()
-    scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) else []
+    scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else []
     search_start = 0
     for token in tokens:
         try:
@@ -97,13 +100,13 @@ def extract_rationales(
             token_range = None
             rank = None
 
-        search_start = search_start + len(token) # 1 is for whitespace
+        search_start = search_start + len(token)  # 1 is for whitespace
 
-        low_score=low_score.item()
+        low_score = low_score.item()
         low_scores.append(low_score)
 
         n_extend = token_range[1] - token_range[0]
-        scores.extend([base_score - low_score]*n_extend)
+        scores.extend([base_score - low_score] * n_extend)
 
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
@@ -111,9 +114,9 @@ def extract_rationales(
     results['base_score'] = base_score
     results['low_scores'] = torch.tensor(low_scores)
     results['scores'] = torch.tensor(scores, device=mt.model.device).unsqueeze(dim=0)
-
+    # breakpoint()
     if normalize:
-      results['scores'] = torch.softmax(results['scores'], dim=1)
+        results['scores'] = torch.softmax(results['scores'], dim=1)
 
     return results
 
@@ -157,7 +160,8 @@ def plot_rationales(result, topk=None, savepdf=None, modelname=None):
 
     scores_formatted = [f'{x.item():.4f}' for x in differences[0]]
     for i, label in enumerate(scores_formatted):
-        ax.annotate(label, (0.5 + i, 1.0), textcoords="offset points", xytext=(0, -15), ha='center', fontsize=8, rotation=0)
+        ax.annotate(label, (0.5 + i, 1.0), textcoords="offset points", xytext=(0, -15), ha='center', fontsize=8,
+                    rotation=0)
 
     if savepdf:
         os.makedirs(os.path.dirname(savepdf), exist_ok=True)
@@ -166,13 +170,12 @@ def plot_rationales(result, topk=None, savepdf=None, modelname=None):
     else:
         plt.show()
 
-def plot_generation(data, topk=None, savepdf=None, modelname=None):
 
+def plot_generation(data, topk=None, savepdf=None, modelname=None):
     # Labels for rows and columns
     x_labels = list([result['answer'] for result in data.values()])
     last_key = list(data.keys())[-1]
     y_labels = list(data[last_key]["input_tokens"])
-
 
     # Dummy data for a 2x4 grid
     scores = [result['scores'][0].tolist() for result in data.values()]
@@ -183,17 +186,16 @@ def plot_generation(data, topk=None, savepdf=None, modelname=None):
 
     cell_width = 1.5
     cell_height = 1
-    fig_width = cell_width * (max_length-min_length-1)
+    fig_width = cell_width * (max_length - min_length - 1)
     fig_height = cell_height * min_length
-
 
     # Create the heatmap
     plt.figure(figsize=(fig_width, fig_height))
-    ax = sns.heatmap(np.transpose(scores), annot=True, fmt=".2f", cmap="Greens", xticklabels=x_labels, yticklabels=y_labels, cbar=False)
+    ax = sns.heatmap(np.transpose(scores), annot=True, fmt=".2f", cmap="Greens", xticklabels=x_labels,
+                     yticklabels=y_labels, cbar=False)
 
     ax.axhline(y=5.9, color='black', linewidth=0.5)  # x-axis
     ax.axvline(x=0, color='black', linewidth=0.5)  # y-axis
-
 
     plt.xticks(rotation=0)
     plt.yticks(rotation=0)

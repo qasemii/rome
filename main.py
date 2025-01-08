@@ -3,7 +3,14 @@ import os, re, json
 import torch, numpy
 from collections import defaultdict
 from util import nethook
+from transformers import (
+    Qwen2ForCausalLM,
+    Gemma2ForCausalLM,
+    LlamaForCausalLM,
+)
+from hf_olmo import OLMoForCausalLM
 from util.globals import DATA_DIR
+
 from experiments.utils import (
     ModelAndTokenizer,
     layername,
@@ -208,14 +215,14 @@ def main():
 
         # generated_texts = [gptmt.tokenizer.decode(token) for token in generated_ids]
         # print(f'generated full sequence --> {generated_texts}')
-
+        start_pos = 1 if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else 0
         for target_pos in torch.arange(input_ids.shape[0], generated_ids.shape[0]):
             target_id = generated_ids[target_pos]
 
             if args.method == 'membre':
                 ers = extract_rationales(
                     mt,
-                    mt.tokenizer.decode(generated_ids[:target_pos]),  # data["prompt"]
+                    mt.tokenizer.decode(generated_ids[start_pos:target_pos]),  # data["prompt"]
                     noise=noise_level,
                     uniform_noise=uniform_noise,
                 )
@@ -238,10 +245,10 @@ def main():
                 # print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
 
                 # compute Soft-NS and Soft-NC on random importance score
-                random_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
-                                                                        torch.unsqueeze(target_id, 0), rand_scores)
-                random_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
-                                                                        torch.unsqueeze(target_id, 0), rand_scores)
+                # random_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
+                #                                                         torch.unsqueeze(target_id, 0), rand_scores)
+                # random_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
+                #                                                         torch.unsqueeze(target_id, 0), rand_scores)
                 # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
 
                 # # compute metrics on Soft-NS and Soft-NC
