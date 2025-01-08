@@ -220,24 +220,30 @@ def find_token_range(tokenizer, token_array, substring, start):
             break
     return (tok_start, tok_end)
 
-def predict_token(mt, prompts, return_p=False, topk=None):
+
+def predict_token(mt, prompts, topk=None):
     inp = make_inputs(mt.tokenizer, prompts)
-    preds, p = predict_from_input(mt.model, inp, topk=topk)
+    logits = mt.model(**inp)["logits"]
+    probs = torch.softmax(logits[:, -1, :], dim=-1)  # Correct slicing and dimension
 
-    result = [mt.tokenizer.batch_decode(c) if topk else mt.tokenizer.decode(c) for c in preds]
+    if topk:
+        probs, preds = torch.topk(probs, topk, sorted=True, dim=-1)
+    else:
+        probs, preds = torch.max(probs, dim=-1, keepdim=True)  # Keep dims for consistency
 
-    if return_p:
-        result = (result[0], p[0]) if topk else (result, p)
+    result = [
+        (mt.tokenizer.decode(pred.item()), prob.item())
+        for pred, prob in zip(preds.squeeze(0), probs.squeeze(0))  # Squeeze batch dimension for single prompt
+    ]
 
     return result
 
 
-def predict_from_input(model, inp, topk=None):
+def predict_from_input(model, inp):
     logits = model(**inp)["logits"]
     probs = torch.softmax(logits[:, -1], dim=1)
-    p, preds = torch.topk(probs, topk, dim=1) if topk else torch.max(probs, dim=1, keepdim=True)
 
-    return preds, p
+    return probs
 
 
 def collect_embedding_std(mt, subjects):
