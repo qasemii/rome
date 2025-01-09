@@ -69,36 +69,41 @@ def extract_rationales(
     tokens = check_whitespace(prompt, tokens)
 
     results = {}
-    low_scores = list()
+    noise_score, main_score = [], []
     scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else []
     search_start = 0
     for token in tokens:
         try:
             token_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, search_start)
-            low_score = make_noisy_embeddings(
-                mt.model, inp, answer_t, token_range, noise=noise, uniform_noise=uniform_noise
+            low_scores = make_noisy_embeddings(
+                mt.model, inp, token_range, noise=noise, uniform_noise=uniform_noise
             )
+
         except:
             print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
-            low_score = torch.tensor(0, device=mt.model.device)
+            low_scores = torch.zeros(mt.tokenizer.vocab_size, device=mt.model.device)
             token_range = None
 
         search_start = search_start + len(token)  # 1 is for whitespace
-        if mode in None:
-            low_score = low_score.item()
-            low_scores.append(low_score)
 
-            n_extend = token_range[1] - token_range[0]
+        if mode is None:
+            low_score = low_scores[answer_t]
             score = base_score - low_score
         else:
+            kl_loss = torch.nn.KLDivLoss(reduce=True)
+            score = kl_loss(base_scores, low_scores)
+            # breakpoint()
+        noise_score.append(low_scores[answer_t])
+        main_score.append(score.item())
+        n_extend = token_range[1] - token_range[0]
+        scores.extend([score.item()] * n_extend)
 
-        scores.extend([score] * n_extend)
-    # breakpoint()
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
     results['answer'] = answer
     results['base_score'] = base_score
-    results['low_scores'] = torch.tensor(low_scores, device=mt.model.device)
+    results['low_scores'] = torch.tensor(noise_score, device=mt.model.device)
+    results['main_scores'] = torch.tensor(main_score, device=mt.model.device)
     results['scores'] = torch.tensor(scores, device=mt.model.device).unsqueeze(dim=0)
     # breakpoint()
     if normalize:
