@@ -35,7 +35,6 @@ nltk.download('punkt')
 def make_noisy_embeddings(
     model,  # The model
     inp,  # A set of inputs
-    answers_t,  # Answer probabilities to collect
     tokens_to_mix,  # Range of tokens to corrupt (begin, end)
     noise=0.1,  # Level of noise to add
     uniform_noise=False,
@@ -93,11 +92,7 @@ def make_noisy_embeddings(
 
     # We report softmax probabilities for the answers_t token predictions of interest.
     probs = torch.softmax(outputs_exp.logits[1:, -1, :], dim=1).mean(dim=0)
-    sorted_probs, sorted_ids = torch.sort(probs, descending=True)
-    idx = torch.tensor(sorted_ids.tolist().index(answers_t))
-    prob = sorted_probs[idx]
-
-    return prob, rank
+    return probs
 
 class ModelAndTokenizer:
     """
