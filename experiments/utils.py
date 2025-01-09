@@ -110,7 +110,6 @@ class ModelAndTokenizer:
         torch_dtype=None,
         device_map="auto",  # Use device map for efficient memory usage
         fp16=False,  # Use fp16 for reduced memory usage
-        adapter_name_or_path=None,
     ):
         if tokenizer is None:
             assert model_name is not None
@@ -135,17 +134,10 @@ class ModelAndTokenizer:
 
         self.tokenizer = tokenizer
         self.model = model
-        self.layer_names = [
-            n
-            for n, m in model.named_modules()
-            if (re.match(r"^(model|transformer|gpt_neox)\.(h|layers)\.\d+$", n))
-        ]
-        self.num_layers = len(self.layer_names)
 
     def __repr__(self):
         return (
             f"ModelAndTokenizer(model: {type(self.model).__name__} "
-            f"[{self.num_layers} layers], "
             f"tokenizer: {type(self.tokenizer).__name__})"
         )
 
@@ -199,7 +191,6 @@ def decode_tokens(tokenizer, token_array):
         return [decode_tokens(tokenizer, row) for row in token_array]
     return [tokenizer.decode([t]) for t in token_array]
 
-
 def find_token_range(tokenizer, token_array, substring, start):
     toks = decode_tokens(tokenizer, token_array)
     whole_string = "".join(toks)
@@ -214,7 +205,6 @@ def find_token_range(tokenizer, token_array, substring, start):
             tok_end = i + 1
             break
     return (tok_start, tok_end)
-
 
 def predict_token(mt, prompts, topk=None):
     inp = make_inputs(mt.tokenizer, prompts)
@@ -234,13 +224,11 @@ def predict_token(mt, prompts, topk=None):
 
     return result
 
-
 def predict_from_input(model, inp):
     logits = model(**inp)["logits"]
     probs = torch.softmax(logits[:, -1, :], dim=1)
 
     return probs
-
 
 def collect_embedding_std(mt, subjects):
     alldata = []
@@ -252,7 +240,6 @@ def collect_embedding_std(mt, subjects):
     alldata = torch.cat(alldata)
     noise_level = alldata.std().item()
     return noise_level
-
 
 def get_embedding_cov(mt):
     model = mt.model
@@ -301,7 +288,6 @@ def get_embedding_cov(mt):
                 stat.add(feats.cpu().double())
     return stat.mean(), stat.covariance()
 
-
 def make_generator_transform(mean=None, cov=None):
     d = len(mean) if mean is not None else len(cov)
     device = mean.device if mean is not None else cov.device
@@ -317,11 +303,9 @@ def make_generator_transform(mean=None, cov=None):
         layer.weight[...] = w
     return layer
 
-
 def collect_embedding_gaussian(mt):
     m, c = get_embedding_cov(mt)
     return make_generator_transform(m, c)
-
 
 def collect_embedding_tdist(mt, degree=3):
     # We will sample sqrt(degree / u) * sample, where u is from the chi2[degree] dist.

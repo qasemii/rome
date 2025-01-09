@@ -105,7 +105,7 @@ def extract_rationales(
     results['low_scores'] = torch.tensor(noise_score, device=mt.model.device)
     results['main_scores'] = torch.tensor(main_score, device=mt.model.device)
     results['scores'] = torch.tensor(scores, device=mt.model.device).unsqueeze(dim=0)
-    # breakpoint()
+
     if normalize:
         results['scores'] = torch.softmax(results['scores'], dim=1)
 
