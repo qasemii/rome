@@ -55,12 +55,12 @@ def extract_rationales(
         normalize=False,
 ):
     # Llama and Gemma add bos token
-    inp = make_inputs(mt.tokenizer, [prompt] * (samples + 1))
+    inp = make_inputs(mt.tokenizer, [prompt] * (samples + 1))  # [(samples + 1), 1]
     with torch.no_grad():
-        base_scores = predict_from_input(mt.model, inp)
+        base_scores = predict_from_input(mt.model, inp)[0]
 
     answer = predict_token(mt, [prompt])[0]
-    answer_t = mt.tokeizer.encode(expect)
+    answer_t = mt.tokenizer.encode(answer)[0]
     base_score = base_scores[answer_t]
 
     # Tokenize sentence into words and punctuation
@@ -84,18 +84,21 @@ def extract_rationales(
             token_range = None
 
         search_start = search_start + len(token)  # 1 is for whitespace
+        if mode in None:
+            low_score = low_score.item()
+            low_scores.append(low_score)
 
-        low_score = low_score.item()
-        low_scores.append(low_score)
+            n_extend = token_range[1] - token_range[0]
+            score = base_score - low_score
+        else:
 
-        n_extend = token_range[1] - token_range[0]
-        scores.extend([base_score - low_score] * n_extend)
-
+        scores.extend([score] * n_extend)
+    # breakpoint()
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
     results['answer'] = answer
     results['base_score'] = base_score
-    results['low_scores'] = torch.tensor(low_scores)
+    results['low_scores'] = torch.tensor(low_scores, device=mt.model.device)
     results['scores'] = torch.tensor(scores, device=mt.model.device).unsqueeze(dim=0)
     # breakpoint()
     if normalize:
