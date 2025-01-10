@@ -64,11 +64,6 @@ def extract_rationales(
     answer_t = mt.tokenizer.encode(answer)[0]
     base_score = base_scores[answer_t]
 
-    # Tokenize sentence into words and punctuation
-    tokens = nltk.word_tokenize(prompt)
-    tokens = ['"' if token in ['``', "''"] else token for token in tokens]
-    tokens = check_whitespace(prompt, tokens)
-
     results = {}
     noise_score, main_score = [], []
     scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else []

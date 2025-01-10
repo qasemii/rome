@@ -19,6 +19,8 @@ from hf_olmo import OLMoForCausalLM
 from peft import AutoPeftModelForCausalLM
 
 from dsets import KnownsDataset
+from dsets.data_utils import check_whitespace
+
 from rome.tok_dataset import (
     TokenizedDataset,
     dict_to_,
