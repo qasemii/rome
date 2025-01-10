@@ -69,14 +69,14 @@ def extract_rationales(
     scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else []
 
     tokens_range = collect_token_range(mt, prompt)
-    for t, r in zip(tokens, tokens_range):
+    for r in tokens_range:
         try:
             low_scores = make_noisy_embeddings(
                 mt.model, inp, tokens_to_mix=r, noise=noise, uniform_noise=uniform_noise
             )
 
         except:
-            print(f"Couldn't compute the low_scores for {t}. Assigning 0 to lower_score ...")
+            print(f"Couldn't compute the low_scores. Assigning 0 to lower_score ...")
             low_scores = torch.zeros(mt.tokenizer.vocab_size, device=mt.model.device)
 
 
