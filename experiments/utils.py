@@ -327,3 +327,19 @@ def collect_embedding_tdist(mt, degree=3):
         return student
 
     return normal_to_student
+
+def collect_token_range(mt, prompt):
+    inp = make_inputs(mt.tokenizer, [prompt])
+
+    # Tokenize sentence into words and punctuation
+    tokens = nltk.word_tokenize(prompt)
+    tokens = ['"' if token in ['``', "''"] else token for token in tokens]
+    tokens = check_whitespace(prompt, tokens)
+
+    ranges = []
+    start = 0
+    for token in tokens:
+        e_range = find_token_range(mt.tokenizer, inp["input_ids"], token, start=start)
+        ranges.append(e_range)
+        start = start + len(token)
+    return ranges

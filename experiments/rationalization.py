@@ -22,6 +22,7 @@ from experiments.utils import (
     predict_from_input,
     collect_embedding_std,
     make_noisy_embeddings,
+    collect_token_range,
 )
 from dsets import KnownsDataset
 from dsets.data_utils import check_whitespace
@@ -71,20 +72,18 @@ def extract_rationales(
     results = {}
     noise_score, main_score = [], []
     scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else []
-    search_start = 0
-    for token in tokens:
+
+    tokens_range = collect_token_range(mt, prompt)
+    for t, r in zip(tokens, tokens_range):
         try:
-            token_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, search_start)
             low_scores = make_noisy_embeddings(
-                mt.model, inp, token_range, noise=noise, uniform_noise=uniform_noise
+                mt.model, inp, tokens_to_mix=r, noise=noise, uniform_noise=uniform_noise
             )
 
         except:
-            print(f"Couldn't find any token range for {token}. Assigning 0 to lower_score ...")
+            print(f"Couldn't compute the low_scores for {t}. Assigning 0 to lower_score ...")
             low_scores = torch.zeros(mt.tokenizer.vocab_size, device=mt.model.device)
-            token_range = None
 
-        search_start = search_start + len(token)  # 1 is for whitespace
 
         if mode is None:
             low_score = low_scores[answer_t]
