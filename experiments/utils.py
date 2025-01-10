@@ -347,6 +347,6 @@ def collect_token_range(mt, prompt, window=1):
         start += len(token)  # Optimized this line by using '+=' instead of 'start = start + len(token)'
 
     # Computing the range based on the window size
-    ranges = [(ranges[i][0], ranges[i+window-1][1]) for i in range(len(tokens) - window)]
+    ranges = [(ranges[i][0], ranges[i+window-1][1]) for i in range(len(tokens) - window + 1)]
 
     return ranges

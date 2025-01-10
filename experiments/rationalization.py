@@ -68,6 +68,11 @@ def extract_rationales(
     noise_score, main_score = [], []
     scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else []
 
+    # Tokenize sentence into words and punctuation
+    tokens = nltk.word_tokenize(prompt)
+    tokens = ['"' if token in ['``', "''"] else token for token in tokens]
+    tokens = check_whitespace(prompt, tokens)
+
     tokens_range = collect_token_range(mt, prompt)
     for r in tokens_range:
         try:
@@ -87,9 +92,18 @@ def extract_rationales(
             kl_loss = torch.nn.KLDivLoss(reduce=True)
             score = kl_loss(base_scores, low_scores)
             # breakpoint()
+
         noise_score.append(low_scores[answer_t])
         main_score.append(score.item())
-        n_extend = token_range[1] - token_range[0]
+
+        temp = torch.zeros(len(main_score), len(tokens))
+        for i, s in enumerate(main_score):
+            temp[i, i:window] = s
+        temp2 = torch.zeros(len(tokens))
+
+
+
+        n_extend = r[1] - r[0]
         scores.extend([score.item()] * n_extend)
 
     results['input_ids'] = inp["input_ids"][0]
