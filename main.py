@@ -229,6 +229,9 @@ def main():
                     uniform_noise=uniform_noise,
                 )
                 scores = ers['scores']
+            elif args.method == 'random':
+                scores = torch.softmax(
+                    torch.rand(torch.unsqueeze(generated_ids[:target_pos], 0).shape, device=mt.model.device), dim=-1)
             else:
                 rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
                 scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
