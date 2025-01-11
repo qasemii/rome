@@ -70,6 +70,7 @@ def main():
     aa("--output_dir", default=f"results/")
     aa("--n_samples", default=-1, type=int)
     aa("--max_new_tokens", default=1, type=int)
+    aa("--window", default=1, type=int)
     aa("--noise_coef", default=3, type=int)
     aa("--method",
        type=str,
@@ -227,6 +228,7 @@ def main():
                     mt.tokenizer.decode(generated_ids[start_pos:target_pos]),  # data["prompt"]
                     noise=noise_level,
                     uniform_noise=uniform_noise,
+                    window=args.window
                 )
                 scores = ers['scores']
             elif args.method == 'random':

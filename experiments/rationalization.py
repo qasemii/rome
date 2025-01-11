@@ -51,6 +51,7 @@ def extract_rationales(
         prompt,
         samples=10,
         noise=0.1,
+        window=1,
         uniform_noise=False,
         mode=None,
         normalize=False,
@@ -73,8 +74,9 @@ def extract_rationales(
     tokens = ['"' if token in ['``', "''"] else token for token in tokens]
     tokens = check_whitespace(prompt, tokens)
 
-    tokens_range = collect_token_range(mt, prompt)
-    for r in tokens_range:
+    score_table = torch.zeros(len(tokens)-window+1, len(tokens))
+    tokens_range = collect_token_range(mt, prompt, window)
+    for i, r in enumerate(tokens_range):
         try:
             low_scores = make_noisy_embeddings(
                 mt.model, inp, tokens_to_mix=r, noise=noise, uniform_noise=uniform_noise
@@ -91,27 +93,25 @@ def extract_rationales(
         else:
             kl_loss = torch.nn.KLDivLoss(reduce=True)
             score = kl_loss(base_scores, low_scores)
-            # breakpoint()
 
         noise_score.append(low_scores[answer_t])
         main_score.append(score.item())
 
-        temp = torch.zeros(len(main_score), len(tokens))
-        for i, s in enumerate(main_score):
-            temp[i, i:window] = s
-        temp2 = torch.zeros(len(tokens))
+        score_table[i, i:i+window] = score.item()
 
+    tokens_range = collect_token_range(mt, prompt, 1)
+    score_merge = torch.sum(score_table, dim=0) / torch.sum((score_table!=0), dim=0)
 
-
+    for i, r in enumerate(tokens_range):
         n_extend = r[1] - r[0]
-        scores.extend([score.item()] * n_extend)
+        scores.extend([score_merge[i].item()] * n_extend)
 
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
     results['answer'] = answer
     results['base_score'] = base_score
     results['low_scores'] = torch.tensor(noise_score, device=mt.model.device)
-    results['main_scores'] = torch.tensor(main_score, device=mt.model.device)
+    results['main_scores'] = score_merge
     results['scores'] = torch.tensor(scores, device=mt.model.device).unsqueeze(dim=0)
 
     if normalize:

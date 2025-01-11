@@ -3,11 +3,6 @@ import torch, numpy
 from collections import defaultdict
 from util import nethook
 from util.globals import DATA_DIR
-from experiments.utils import (
-    ModelAndTokenizer,
-    layername,
-)
-
 from dsets import KnownsDataset, CounterFactDataset
 
 import random
