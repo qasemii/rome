@@ -36,7 +36,7 @@ import nltk
 nltk.download('punkt')
 
 def make_noisy_embeddings(
-    model,  # The model
+    mt,  # The model
     inp,  # A set of inputs
     tokens_to_mix,  # Range of tokens to corrupt (begin, end)
     noise=0.1,  # Level of noise to add
@@ -64,7 +64,7 @@ def make_noisy_embeddings(
     else:
         prng = lambda *shape: rs.randn(*shape)
 
-    embed_layername = layername(model, 0, "embed")
+    embed_layername = layername(mt.model, 0, "embed")
 
     # Define the model-patching rule.
     if isinstance(noise, float):
@@ -80,18 +80,18 @@ def make_noisy_embeddings(
                 torch.from_numpy(prng(x.shape[0] - 1, e - b, x.shape[2]))
             ).to(x.device)
             if replace:
-                x[1:, b:e] = noise_data
+                x[1:, b:e] = mt.tokenizer.encode('[MASK]')
             else:
                 x[1:, b:e] += noise_data
         return x
 
     # With the patching rules defined, run the patched model in inference.
     with torch.no_grad(), nethook.TraceDict(
-        model,
+        mt.model,
         [embed_layername],
         edit_output=patch_rep,
     ) as td:
-        outputs_exp = model(**inp)
+        outputs_exp = mt.model(**inp)
 
     # We report softmax probabilities for the answers_t token predictions of interest.
     probs = torch.softmax(outputs_exp.logits[1:, -1, :], dim=1).mean(dim=0)

@@ -80,7 +80,7 @@ def extract_rationales(
     for i, r in enumerate(tokens_range):
         try:
             low_scores = make_noisy_embeddings(
-                mt.model, inp, tokens_to_mix=r, noise=noise, uniform_noise=uniform_noise
+                mt, inp, tokens_to_mix=r, noise=noise, uniform_noise=uniform_noise
             )
 
         except:
