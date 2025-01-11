@@ -9,6 +9,7 @@ from transformers import (
     LlamaForCausalLM,
     OlmoForCausalLM,
 )
+from hf_olmo import OLMoForCausalLM
 from util.globals import DATA_DIR
 
 from experiments.utils import (

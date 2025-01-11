@@ -10,6 +10,7 @@ from transformers import (
     LlamaForCausalLM,
     OlmoForCausalLM,
 )
+from hf_olmo import OLMoForCausalLM
 from experiments.utils import (
     ModelAndTokenizer,
     layername,
