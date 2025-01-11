@@ -130,7 +130,7 @@ class ModelAndTokenizer:
             model = AutoModelForCausalLM.from_pretrained(
                 model_name, **model_kwargs
             )
-            if isinstance(model, OlmoForCausalLM):
+            if isinstance(model, OLMoForCausalLM):
                 model.tie_weights()
 
             model.eval()#.cuda()
@@ -151,7 +151,7 @@ def layername(model, num, kind=None):
         if kind == "attn":
             kind = "self_attn"
         return f'model.layers.{num}{"" if kind is None else "." + kind}'
-    elif isinstance(model, OlmoForCausalLM):
+    elif isinstance(model, OLMoForCausalLM):
         if kind == "embed":
             return "model.transformer.wte"
         elif kind in ['attn_out', 'ff_out', 'att_proj', 'ff_proj', 'mlp']:
