@@ -14,8 +14,8 @@ from transformers import (
     Qwen2ForCausalLM,
     Gemma2ForCausalLM,
     LlamaForCausalLM,
+    OlmoForCausalLM,
 )
-from hf_olmo import OLMoForCausalLM
 from peft import AutoPeftModelForCausalLM
 
 from dsets import KnownsDataset
@@ -129,7 +129,7 @@ class ModelAndTokenizer:
             model = AutoModelForCausalLM.from_pretrained(
                 model_name, **model_kwargs
             )
-            if isinstance(model, OLMoForCausalLM):
+            if isinstance(model, OlmoForCausalLM):
                 model.tie_weights()
 
             model.eval()#.cuda()
@@ -150,7 +150,7 @@ def layername(model, num, kind=None):
         if kind == "attn":
             kind = "self_attn"
         return f'model.layers.{num}{"" if kind is None else "." + kind}'
-    elif isinstance(model, OLMoForCausalLM):
+    elif isinstance(model, OlmoForCausalLM):
         if kind == "embed":
             return "model.transformer.wte"
         elif kind in ['attn_out', 'ff_out', 'att_proj', 'ff_proj', 'mlp']:
