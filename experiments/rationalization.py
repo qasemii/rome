@@ -8,8 +8,8 @@ from transformers import (
     Qwen2ForCausalLM,
     Gemma2ForCausalLM,
     LlamaForCausalLM,
+    OlmoForCausalLM,
 )
-from hf_olmo import OLMoForCausalLM
 from experiments.utils import (
     ModelAndTokenizer,
     layername,

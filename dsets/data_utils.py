@@ -163,7 +163,6 @@ def get_predictions(mt, data, topk=10):
 
     return results
 
-
 def match_tokens_with_scores(mt, data, ers):
 
     test = []
