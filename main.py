@@ -83,7 +83,7 @@ def main():
 
     nltk.download('averaged_perceptron_tagger_eng')
 
-    result_dir = f"{args.output_dir}{args.fact_file}/{args.model_name}"
+    result_dir = f"{args.output_dir}{args.dataset}/{args.model_name}"
     os.makedirs(result_dir, exist_ok=True)
 
     cache_dir = f"cache/{args.model_name}"
