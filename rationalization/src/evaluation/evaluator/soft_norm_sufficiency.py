@@ -6,7 +6,6 @@ from transformers import (
     Gemma2ForCausalLM,
     LlamaForCausalLM,
 )
-from hf_olmo import OLMoForCausalLM
 from .base import BaseEvaluator
 from .sufficiency import SufficiencyEvaluator
 from .comprehensiveness import ComprehensivenessEvaluator
@@ -51,8 +50,8 @@ class SoftNormalizedSufficiencyEvaluator(BaseEvaluator):
             if isinstance(self.model, Qwen2ForCausalLM):
                 qwen2Model: Qwen2ForCausalLM = self.model
                 input_wte = qwen2Model.model.embed_tokens.weight[input_ids,:]
-            elif isinstance(self.model, OLMoForCausalLM):
-                olmoModel: OLMoForCausalLM = self.model
+            elif isinstance(self.model, OlmoForCausalLM):
+                olmoModel: OlmoForCausalLM = self.model
                 input_wte = olmoModel.model.transformer.wte.weight[input_ids,:]
             elif isinstance(self.model, Gemma2ForCausalLM):
                 gemma2Model: Gemma2ForCausalLM = self.model
