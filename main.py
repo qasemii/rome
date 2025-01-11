@@ -7,8 +7,8 @@ from transformers import (
     Qwen2ForCausalLM,
     Gemma2ForCausalLM,
     LlamaForCausalLM,
+    OlmoForCausalLM,
 )
-from hf_olmo import OLMoForCausalLM
 from util.globals import DATA_DIR
 
 from experiments.utils import (
@@ -66,7 +66,7 @@ def main():
         parser.add_argument(*args, **kwargs)
 
     aa("--model_name", default="gpt2-medium")
-    aa("--fact_file", default="knowns")
+    aa("--dataset", default="Knowns")
     aa("--output_dir", default=f"results/")
     aa("--n_samples", default=-1, type=int)
     aa("--max_new_tokens", default=1, type=int)
@@ -96,11 +96,14 @@ def main():
     )
     pad_token_id = mt.tokenizer.pad_token_id if mt.tokenizer.pad_token_id is not None else mt.tokenizer.eos_token_id
 
-    print(f"Loading {args.fact_file} dataset ...")
-    if args.fact_file == "knowns":
+    print(f"Loading {args.dataset} dataset ...")
+    if args.dataset == "Knowns":
         dataset = KnownsDataset(DATA_DIR)
-    elif args.fact_file == "counterfact":
+    elif args.dataset == "Counterfact":
         dataset = CounterFactDataset(DATA_DIR)
+    elif args.dataset == "LongRA":
+        # dataset = CounterFactDataset(DATA_DIR)
+        pass
     else:
         raise ValueError
 
