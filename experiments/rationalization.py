@@ -1,6 +1,8 @@
 import os, re, json
 import torch, numpy
 from collections import defaultdict
+from itertools import combinations
+
 from util import nethook
 from util.globals import DATA_DIR
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -66,147 +68,72 @@ def extract_rationales(
     answer_t = mt.tokenizer.encode(answer)[0]
     base_score = base_scores[answer_t]
 
+    noised_scores = make_noisy_embeddings(
+        mt, inp,
+        tokens_to_mix=[(0, len(inp))],
+        noise=noise,
+    )
+    noised_score = noised_scores[answer_t]
+
     results = {}
-    noise_score, main_score = [], []
-    scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else []
+    token_scores = [0] if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else []
 
     # Tokenize sentence into words and punctuation
     tokens = nltk.word_tokenize(prompt)
     tokens = ['"' if token in ['``', "''"] else token for token in tokens]
     tokens = check_whitespace(prompt, tokens)
 
-    score_table = torch.zeros(len(tokens)-window+1, len(tokens))
-    tokens_range = collect_token_range(mt, prompt, window)
-    for i, r in enumerate(tokens_range):
+    tokens_range = collect_token_range(mt, prompt, 1)
+    if window >= 1:
+        tokens_range = list(combinations(tokens_range, window))
+    score_table = torch.zeros(len(tokens_range), len(tokens))
+    for i, r_list in enumerate(tokens_range):
+        r_list = list(r_list)
+        # breakpoint()
         try:
-            low_scores = make_noisy_embeddings(
-                mt, inp, tokens_to_mix=r, noise=noise, uniform_noise=uniform_noise
+            suff_scores = make_noisy_embeddings(
+                mt, inp, tokens_to_mix=r_list, noise=noise, uniform_noise=uniform_noise, denoise=True
             )
 
+            comp_scores = make_noisy_embeddings(
+                mt, inp, tokens_to_mix=r_list, noise=noise, uniform_noise=uniform_noise
+            )
         except:
             print(f"Couldn't compute the low_scores. Assigning 0 to lower_score ...")
             low_scores = torch.zeros(mt.tokenizer.vocab_size, device=mt.model.device)
 
-
         if mode is None:
-            low_score = low_scores[answer_t]
-            score = base_score - low_score
+            suff_score = suff_scores[answer_t]
+            comp_score = comp_scores[answer_t]
+            score = (base_score - comp_score) + (suff_score - noised_score)
         else:
-            kl_loss = torch.nn.KLDivLoss(reduce=True)
-            score = kl_loss(base_scores, low_scores)
+            topk = 10
+            base_scores_topk = torch.topk(base_scores, topk).values
+            topk_idx = torch.topk(base_scores, topk).indices
+            low_scores_topk = low_scores.gather(0, topk_idx)
 
-        noise_score.append(low_scores[answer_t])
-        main_score.append(score.item())
+            kl_loss = torch.nn.KLDivLoss(reduction="batchmean")
+            score = kl_loss(low_scores_topk, base_scores_topk)
 
-        score_table[i, i:i+window] = score.item()
+        for (b, e) in r_list:
+            score_table[i, b:e] = score.item()
 
+    # breakpoint()
     tokens_range = collect_token_range(mt, prompt, 1)
-    score_merge = torch.sum(score_table, dim=0) / torch.sum((score_table!=0), dim=0)
+    word_scores = torch.sum(score_table, dim=0) / torch.sum((score_table != 0), dim=0)
 
     for i, r in enumerate(tokens_range):
         n_extend = r[1] - r[0]
-        scores.extend([score_merge[i].item()] * n_extend)
+        token_scores.extend([word_scores[i].item()] * n_extend)
 
     results['input_ids'] = inp["input_ids"][0]
     results['input_tokens'] = tokens
     results['answer'] = answer
     results['base_score'] = base_score
-    results['low_scores'] = torch.tensor(noise_score, device=mt.model.device)
-    results['main_scores'] = score_merge
-    results['scores'] = torch.tensor(scores, device=mt.model.device).unsqueeze(dim=0)
+    results['word_scores'] = word_scores
+    results['token_scores'] = torch.tensor(token_scores, device=mt.model.device).unsqueeze(dim=0)
 
     if normalize:
         results['scores'] = torch.softmax(results['scores'], dim=1)
 
     return results
-
-
-def plot_rationales(result, topk=None, savepdf=None, modelname=None):
-    differences = result['scores']
-    if topk != None:
-        indexes = torch.topk(result['scores'], topk).indices.squeeze().tolist()
-        for i in range(differences.numel()):
-            if i not in indexes:
-                differences[0][i] = 0
-
-    # low_score = result["low_score"]
-    answer = result["answer"].strip()
-    kind = (
-        None
-        if (not result["kind"] or result["kind"] == "None")
-        else str(result["kind"])
-    )
-    window = result.get("window", 10)
-    labels = list(result["input_tokens"])
-    # for i in range(*result["subject_range"]):
-    #     labels[i] = labels[i] + "*"
-
-    fig, ax = plt.subplots(figsize=(len(labels), 0.5), dpi=200)
-    h = ax.pcolor(
-        differences,
-        cmap={None: "Purples", "None": "Purples", "mlp": "Greens", "attn": "Reds"}[
-            kind
-        ],
-        # vmin=low_score #Setting the minimum value of the color bar to 0
-        # vmax=1    # Setting the maximum value of the color bar to 1
-    )
-
-    ax.set_xticks([0.5 + i for i in range(len(labels))])
-    ax.set_xticklabels(labels, rotation=20, ha='center', fontsize=8)  # , position=(0.1, 0))
-
-    ax.yaxis.set_ticks([])
-    ax.yaxis.set_label_position('right')
-    ax.set_ylabel(f"[{answer}]", rotation=0, labelpad=30, va='center')
-
-    scores_formatted = [f'{x.item():.4f}' for x in differences[0]]
-    for i, label in enumerate(scores_formatted):
-        ax.annotate(label, (0.5 + i, 1.0), textcoords="offset points", xytext=(0, -15), ha='center', fontsize=8,
-                    rotation=0)
-
-    if savepdf:
-        os.makedirs(os.path.dirname(savepdf), exist_ok=True)
-        plt.savefig(savepdf, bbox_inches="tight")
-        plt.close()
-    else:
-        plt.show()
-
-
-def plot_generation(data, topk=None, savepdf=None, modelname=None):
-    # Labels for rows and columns
-    x_labels = list([result['answer'] for result in data.values()])
-    last_key = list(data.keys())[-1]
-    y_labels = list(data[last_key]["input_tokens"])
-
-    # Dummy data for a 2x4 grid
-    scores = [result['scores'][0].tolist() for result in data.values()]
-    min_length = min(len(s) for s in scores)
-    max_length = max(len(s) for s in scores)
-    padded_scores = [s + [np.nan] * (max_length - len(s)) for s in scores]
-    scores = np.array(padded_scores)
-
-    cell_width = 1.5
-    cell_height = 1
-    fig_width = cell_width * (max_length - min_length - 1)
-    fig_height = cell_height * min_length
-
-    # Create the heatmap
-    plt.figure(figsize=(fig_width, fig_height))
-    ax = sns.heatmap(np.transpose(scores), annot=True, fmt=".2f", cmap="Greens", xticklabels=x_labels,
-                     yticklabels=y_labels, cbar=False)
-
-    ax.axhline(y=5.9, color='black', linewidth=0.5)  # x-axis
-    ax.axvline(x=0, color='black', linewidth=0.5)  # y-axis
-
-    plt.xticks(rotation=0)
-    plt.yticks(rotation=0)
-
-    # Show the plot
-    # plt.tight_layout()
-    plt.show()
-
-    if savepdf:
-        os.makedirs(os.path.dirname(savepdf), exist_ok=True)
-        plt.savefig(savepdf, bbox_inches="tight")
-        plt.close()
-    else:
-        plt.show()

@@ -41,7 +41,7 @@ def make_noisy_embeddings(
     tokens_to_mix,  # Range of tokens to corrupt (begin, end)
     noise=0.1,  # Level of noise to add
     uniform_noise=False,
-    replace=False,  # True to replace with instead of add noise
+    denoise=False,  # True to replace with instead of add noise
 ):
     """
     Runs a single causal trace.  Given a model and a batch input where
@@ -74,14 +74,21 @@ def make_noisy_embeddings(
 
     def patch_rep(x):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
-        if tokens_to_mix is not None:
-            b, e = tokens_to_mix
-            noise_data = noise_fn(
-                torch.from_numpy(prng(x.shape[0] - 1, e - b, x.shape[2]))
-            ).to(x.device)
-            if replace:
-                x[1:, b:e] = mt.tokenizer.encode('[MASK]')
-            else:
+        for (b, e) in tokens_to_mix:
+
+        ## Replace the target token embeddings with [MASK] embeddings ##########################################
+        # mt.tokenizer.add_special_tokens({"mask_token": "[MASK]"})
+        # mask_id = mt.tokenizer.mask_token_id
+        # mask_embedding = mt.model.get_input_embeddings().weight[mask_id]
+        # x[1:, b:e] = mask_embedding
+
+            if denoise: # Add noise to all tokens except the target token
+                noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, b, x.shape[2]))).to(x.device)
+                x[1:, :b] += noise_data
+                noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, x.shape[1] - e, x.shape[2]))).to(x.device)
+                x[1:, e:] += noise_data
+            else: # Add noise to target token
+                noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, e - b, x.shape[2]))).to(x.device)
                 x[1:, b:e] += noise_data
         return x
 
@@ -134,6 +141,11 @@ class ModelAndTokenizer:
                 model.tie_weights()
 
             model.eval()#.cuda()
+
+        if tokenizer.pad_token_id is None:
+            tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+        if tokenizer.mask_token_id is None:
+            tokenizer.add_special_tokens({"mask_token": "[MASK]"})
 
         self.tokenizer = tokenizer
         self.model = model
