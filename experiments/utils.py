@@ -40,7 +40,6 @@ def make_noisy_embeddings(
     inp,  # A set of inputs
     tokens_to_mix,  # Range of tokens to corrupt (begin, end)
     noise=0.1,  # Level of noise to add
-    uniform_noise=False,
     denoise=False,  # True to replace with instead of add noise
 ):
     """
@@ -59,18 +58,10 @@ def make_noisy_embeddings(
     """
 
     rs = numpy.random.RandomState(1)  # For reproducibility, use pseudorandom noise
-    if uniform_noise:
-        prng = lambda *shape: rs.uniform(-1, 1, shape)
-    else:
-        prng = lambda *shape: rs.randn(*shape)
+    prng = lambda *shape: rs.randn(*shape)/ numpy.sqrt(shape[-1])
+    noise_fn = lambda x: noise * x
 
     embed_layername = layername(mt.model, 0, "embed")
-
-    # Define the model-patching rule.
-    if isinstance(noise, float):
-        noise_fn = lambda x: noise * x
-    else:
-        noise_fn = noise
 
     def patch_rep(x):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
