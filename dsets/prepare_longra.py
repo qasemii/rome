@@ -60,7 +60,7 @@ with torch.no_grad():
             word_a = analogy_config["a"][pair_idx] # target word
             word_b = analogy_config["b"][pair_idx] # relative word
 
-            prompt = template.replace("[A]", "").replace("[B]", word_b)
+            prompt = template.replace(" [A]", "").replace("[B]", word_b)
 
             distractor_start_id = prompt.index("(")-1
             distractor_end_id = prompt.index(")")+2
@@ -76,10 +76,9 @@ with torch.no_grad():
             })
             data_id += 1
 
-    json_str = json.dumps(data, indent=indent)
+    json_str = json.dumps(data)
     filename = os.path.join(output_dir, "LongRA.json")
     with open(filename, "w") as f_output:
         f_output.write(json_str)
-
 
     logging.info(f"Preparation finished")
