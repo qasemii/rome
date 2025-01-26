@@ -219,7 +219,7 @@ def collect_embedding_std(mt, subjects):
     alldata = []
     for s in tqdm(subjects):
         inp = make_inputs(mt.tokenizer, [s])
-        with nethook.Trace(mt.model, layername(mt.model) as t:
+        with nethook.Trace(mt.model, layername(mt.model)) as t:
             mt.model(**inp)
             alldata.append(t.output[0])
     alldata = torch.cat(alldata)
@@ -267,7 +267,7 @@ def get_embedding_cov(mt):
             for batch in batch_group:
                 batch = dict_to_(batch, "cuda")
                 del batch["position_ids"]
-                with nethook.Trace(model, layername(mt.model) as tr:
+                with nethook.Trace(model, layername(mt.model)) as tr:
                     model(**batch)
                 feats = flatten_masked_batch(tr.output, batch["attention_mask"])
                 stat.add(feats.cpu().double())
