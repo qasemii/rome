@@ -61,7 +61,7 @@ def make_noisy_embeddings(
     prng = lambda *shape: rs.randn(*shape)/ numpy.sqrt(shape[-1])
     noise_fn = lambda x: noise * x
 
-    embed_layername = layername(mt.model, 0, "embed")
+    embed_layername = layername(mt.model)
 
     def patch_rep(x):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
@@ -147,7 +147,7 @@ class ModelAndTokenizer:
             f"tokenizer: {type(self.tokenizer).__name__})"
         )
 
-def layername(model, num, kind=None):
+def layername(model):
     if isinstance(model, Qwen2ForCausalLM) or isinstance(model, Gemma2ForCausalLM) or isinstance(model, LlamaForCausalLM):
         return "model.embed_tokens"
     elif isinstance(model, OLMoForCausalLM):
@@ -219,7 +219,7 @@ def collect_embedding_std(mt, subjects):
     alldata = []
     for s in tqdm(subjects):
         inp = make_inputs(mt.tokenizer, [s])
-        with nethook.Trace(mt.model, layername(mt.model, 0, "embed")) as t:
+        with nethook.Trace(mt.model, layername(mt.model) as t:
             mt.model(**inp)
             alldata.append(t.output[0])
     alldata = torch.cat(alldata)
@@ -267,7 +267,7 @@ def get_embedding_cov(mt):
             for batch in batch_group:
                 batch = dict_to_(batch, "cuda")
                 del batch["position_ids"]
-                with nethook.Trace(model, layername(mt.model, 0, "embed")) as tr:
+                with nethook.Trace(model, layername(mt.model) as tr:
                     model(**batch)
                 feats = flatten_masked_batch(tr.output, batch["attention_mask"])
                 stat.add(feats.cpu().double())
