@@ -21,7 +21,7 @@ from experiments.utils import (
     predict_token,
 )
 from experiments.rationalization import (
-    extract_rationales,
+    get_rationales,
 )
 
 from dsets import (
@@ -71,8 +71,6 @@ def main():
     aa("--output_dir", default=f"results/")
     aa("--n_samples", default=-1, type=int)
     aa("--max_new_tokens", default=1, type=int)
-    aa("--window", default=1, type=int)
-    aa("--noise_coef", default=3, type=int)
     aa("--method",
        type=str,
        default="integrated_gradients",
@@ -122,19 +120,6 @@ def main():
 
     if args.method == 'membre':
         nltk.download('punkt_tab')
-
-        if os.path.exists(f'{cache_dir}/base_noise_level.json'):
-            print(f"Loading base_noise_level from {cache_dir}")
-            with open(f'{cache_dir}/base_noise_level.json', 'r') as f:
-                base_noise_level = json.load(f)
-        else:
-            print("Collecting embeddings std ...")
-            base_noise_level = collect_embedding_std(mt, [k["subject"] for k in dataset])
-            print(f"Saving base_noise_level to {cache_dir}/base_noise_level.json")
-            with open(f'{cache_dir}/base_noise_level.json', 'w') as f:
-                json.dump(base_noise_level, f)
-        print(f"Base noise level: {base_noise_level}")
-        noise_level = args.noise_coef * base_noise_level
     elif args.method == 'random':
         pass
     elif args.method == 'reagent':
@@ -227,14 +212,11 @@ def main():
             target_id = generated_ids[target_pos]
 
             if args.method == 'membre':
-                ers = extract_rationales(
-                    mt,
-                    mt.tokenizer.decode(generated_ids[start_pos:target_pos]),  # data["prompt"]
-                    noise=noise_level,
-                    uniform_noise=uniform_noise,
-                    window=args.window
-                )
-                scores = ers['scores']
+                ers = get_rationales(mt,
+                                     data["prompt"],
+                                     scale_limit=1,
+                                     mode='prob')
+                scores = ers['token_scores']
             elif args.method == 'random':
                 scores = torch.softmax(
                     torch.rand(torch.unsqueeze(generated_ids[:target_pos], 0).shape, device=mt.model.device), dim=-1)
