@@ -49,70 +49,70 @@ torch.set_grad_enabled(False)
 nltk.download('punkt_tab')
 
 
-def get_rationales(mt, prompt, mode='prob', window=1):
+def get_rationales(mt, prompt, scale_limit=1, mode='prob', verbose=False):
+    # Use single prompt instead of 11
     inp = make_inputs(mt.tokenizer, [prompt] * 11)
+    device = mt.model.device
+
     with torch.no_grad():
         base_scores = predict_from_input(mt.model, inp)[0]
 
     answer = predict_token(mt, [prompt])[0]
     answer_t = mt.tokenizer.encode(answer)[0]
-    base_score = base_scores[answer_t]
+    base_score = base_scores[answer_t].item()  # Ensure it's a scalar
 
     tokens = nltk.word_tokenize(prompt)
-
     tokens = ['"' if token in ['``', "''"] else token for token in tokens]
     tokens = check_whitespace(prompt, tokens)
-    tokens_range = collect_token_range(mt, prompt, 1)
-    if window > 1:
-        tokens_range = list(combinations(tokens_range, window))
+    tokens_range = collect_token_range(mt, prompt)
 
-    score_table = torch.zeros(len(tokens_range), len(inp['input_ids'][0]))
+    # Initialize on correct device
+    tokens_score = torch.zeros(len(inp['input_ids'][0]), device=device)
+
     for idx, t_range in enumerate(tokens_range):
-        t_range = [t_range] if window == 1 else list(t_range)
-
-        high = 10.0
-        low = 0
-        epsilon = 0.001
-
-        while (high - low > epsilon):  # Sufficient iterations for precision
+        b, e = t_range
+        high = scale_limit
+        low = 0.0
+        for _ in range(10):  # with 10 iteration the precision would be 2^(-10)
             noise = (low + high) / 2
             with torch.no_grad():
                 low_scores = make_noisy_embeddings(mt, inp, tokens_to_mix=t_range, noise=noise)
+            prob = low_scores[answer_t].item()
 
-            prob = low_scores[answer_t]
-            # rank = torch.sort(low_scores, dim=-1, descending=True).indices.tolist().index(answer_t)
-            rank = (low_scores > prob).sum().item()
+            sorted_indices = torch.argsort(low_scores, descending=True)
+            rank = (sorted_indices == answer_t).nonzero(as_tuple=True)[0].item()
+
             if rank == 0:
                 low = noise
             else:
                 high = noise
 
-        print(t_range, noise, rank)
+        if verbose:
+            print(f"Token Range: {t_range}, Noise: {noise:.4f}, Output prob: {prob}")
+
         if mode == 'noise':
-            score = 10.0 - noise
+            score = scale_limit - noise
         elif mode == 'prob':
-            score = (base_score - prob)
+            score = base_score - prob
         else:
             raise ValueError(f'Invalid mode: {mode}')
 
-        for (b, e) in t_range:
-            score_table[idx, b:e] = score
+        # Assign score to all subword tokens in the range
+        tokens_score[b:e] = score
 
-    token_range = collect_token_range(mt, prompt, 1)
+    # Aggregate word scores by averaging sub-tokens scores
+    word_scores = torch.tensor([
+        tokens_score[b:e].mean().item() for b, e in tokens_range
+    ], device=device)
 
-    token_scores = torch.sum(score_table, dim=0) / torch.sum((score_table != 0), dim=0)
+    # Consider removing softmax if raw scores are preferred
+    # word_scores = torch.softmax(word_scores, dim=-1)
 
-    word_scores = torch.tensor([token_scores[t_range[0]].item() for t_range in token_range])
-    word_scores = torch.softmax(word_scores, dim=-1)
-
-    results = {}
-
-    results['input_ids'] = inp["input_ids"][0]
-    results['input_tokens'] = tokens
-    results['answer'] = answer
-    results['base_score'] = base_score
-
-    results['word_scores'] = word_scores.to(mt.model.device)
-    results['token_scores'] = token_scores.unsqueeze(dim=0).to(mt.model.device)
-
-    return results
+    return {
+        'input_ids': inp["input_ids"][0],
+        'input_tokens': tokens,
+        'answer': answer,
+        'base_score': base_score,
+        'word_scores': word_scores,
+        'token_scores': tokens_score.unsqueeze(0)
+    }
