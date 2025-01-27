@@ -313,7 +313,7 @@ def collect_embedding_tdist(mt, degree=3):
 
     return normal_to_student
 
-def collect_token_range(mt, prompt, window=1):
+def collect_token_range(mt, prompt):
     inp = make_inputs(mt.tokenizer, [prompt])
 
     # Tokenize sentence into words and punctuation
@@ -328,8 +328,5 @@ def collect_token_range(mt, prompt, window=1):
         e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, start=start)
         ranges.append(e_range)
         start += len(token)  # Optimized this line by using '+=' instead of 'start = start + len(token)'
-
-    # Computing the range based on the window size
-    ranges = [(ranges[i][0], ranges[i+window-1][1]) for i in range(len(tokens) - window + 1)]
 
     return ranges
