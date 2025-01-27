@@ -65,7 +65,7 @@ def make_noisy_embeddings(
 
     def patch_rep(x):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
-        for (b, e) in tokens_to_mix:
+        b, e = tokens_to_mix
 
         ## Replace the target token embeddings with [MASK] embeddings ##########################################
         # mt.tokenizer.add_special_tokens({"mask_token": "[MASK]"})
@@ -73,14 +73,14 @@ def make_noisy_embeddings(
         # mask_embedding = mt.model.get_input_embeddings().weight[mask_id]
         # x[1:, b:e] = mask_embedding
 
-            if denoise: # Add noise to all tokens except the target token
-                noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, b, x.shape[2]))).to(x.device)
-                x[1:, :b] += noise_data
-                noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, x.shape[1] - e, x.shape[2]))).to(x.device)
-                x[1:, e:] += noise_data
-            else: # Add noise to target token
-                noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, e - b, x.shape[2]))).to(x.device)
-                x[1:, b:e] += noise_data
+        if denoise: # Add noise to all tokens except the target token
+            noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, b, x.shape[2]))).to(x.device)
+            x[1:, :b] += noise_data
+            noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, x.shape[1] - e, x.shape[2]))).to(x.device)
+            x[1:, e:] += noise_data
+        else: # Add noise to target token
+            noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, e - b, x.shape[2]))).to(x.device)
+            x[1:, b:e] += noise_data
         return x
 
     # With the patching rules defined, run the patched model in inference.
@@ -88,7 +88,7 @@ def make_noisy_embeddings(
         mt.model,
         [embed_layername],
         edit_output=patch_rep,
-    ) as td:
+    ):
         outputs_exp = mt.model(**inp)
 
     # We report softmax probabilities for the answers_t token predictions of interest.
