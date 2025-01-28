@@ -40,7 +40,6 @@ def make_noisy_embeddings(
     inp,  # A set of inputs
     tokens_to_mix,  # Range of tokens to corrupt (begin, end)
     noise=0.1,  # Level of noise to add
-    denoise=False,  # True to replace with instead of add noise
 ):
     """
     Runs a single causal trace.  Given a model and a batch input where
@@ -73,14 +72,9 @@ def make_noisy_embeddings(
         # mask_embedding = mt.model.get_input_embeddings().weight[mask_id]
         # x[1:, b:e] = mask_embedding
 
-        if denoise: # Add noise to all tokens except the target token
-            noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, b, x.shape[2]))).to(x.device)
-            x[1:, :b] += noise_data
-            noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, x.shape[1] - e, x.shape[2]))).to(x.device)
-            x[1:, e:] += noise_data
-        else: # Add noise to target token
-            noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, e - b, x.shape[2]))).to(x.device)
-            x[1:, b:e] += noise_data
+        # Add noise to target token
+        noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, e - b, x.shape[2]))).to(x.device)
+        x[1:, b:e] += noise_data
         return x
 
     # With the patching rules defined, run the patched model in inference.
