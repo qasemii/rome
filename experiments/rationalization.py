@@ -100,9 +100,11 @@ def get_rationales(mt, prompt, scale_limit=1, mode='prob', verbose=False):
         # Assign score to all subword tokens in the range
         tokens_score[b:e] = score
 
+    tokens_score = tokens_score/torch.sum(tokens_score)
+
     # Aggregate word scores by averaging sub-tokens scores
     word_scores = torch.tensor([
-        tokens_score[b:e].mean().item() for b, e in tokens_range
+        tokens_score[b:e].sum().item() for b, e in tokens_range
     ], device=device)
 
     # Consider removing softmax if raw scores are preferred
