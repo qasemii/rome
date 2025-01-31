@@ -20,7 +20,6 @@ from hf_olmo import OLMoForCausalLM
 from peft import AutoPeftModelForCausalLM
 
 from dsets import KnownsDataset
-from dsets.data_utils import check_whitespace
 
 from rome.tok_dataset import (
     TokenizedDataset,
@@ -57,7 +56,10 @@ def make_noisy_embeddings(
     """
 
     rs = numpy.random.RandomState(1)  # For reproducibility, use pseudorandom noise
-    prng = lambda *shape: rs.randn(*shape)/ numpy.sqrt(shape[-1])
+    # L1: (shape[-1]*numpy.sqrt(2/numpy.pi))
+    # L2: numpy.sqrt(shape[-1])
+    # Linf: numpy.sqrt(2*numpy.log(shape[-1]))
+    prng = lambda *shape: rs.randn(*shape)/numpy.sqrt(2*numpy.log(shape[-1]))
     noise_fn = lambda x: noise * x
 
     embed_layername = layername(mt.model)
@@ -157,11 +159,9 @@ def make_inputs(tokenizer, prompts, device="cuda"):
     else:
         pad_id = 0
     input_ids = [[pad_id] * (maxlen - len(t)) + t for t in token_lists]
-    # position_ids = [[0] * (maxlen - len(t)) + list(range(len(t))) for t in token_lists]
     attention_mask = [[0] * (maxlen - len(t)) + [1] * len(t) for t in token_lists]
     return dict(
         input_ids=torch.tensor(input_ids).to(device),
-        #    position_ids=torch.tensor(position_ids).to(device),
         attention_mask=torch.tensor(attention_mask).to(device),
     )
 
@@ -169,6 +169,27 @@ def decode_tokens(tokenizer, token_array):
     if hasattr(token_array, "shape") and len(token_array.shape) > 1:
         return [decode_tokens(tokenizer, row) for row in token_array]
     return [tokenizer.decode([t]) for t in token_array]
+
+def check_whitespace(prompt, tokens):
+    results = []
+    search_start = 0  # Track the current search position in the prompt
+
+    for token in tokens:
+        # Find the starting index of the token from the current position
+        start_index = prompt.find(token, search_start)
+
+        has_whitespace_before = start_index > 0 and prompt[start_index - 1].isspace()
+
+        if has_whitespace_before:
+            token = " " + token
+            results.append(token)
+        else:
+            results.append(token)
+
+        # Update position to search for the next token
+        search_start = search_start + len(token)
+
+    return results
 
 def find_token_range(tokenizer, token_array, substring, start):
     toks = decode_tokens(tokenizer, token_array)
@@ -184,6 +205,24 @@ def find_token_range(tokenizer, token_array, substring, start):
             tok_end = i + 1
             break
     return (tok_start, tok_end)
+
+def collect_token_range(mt, prompt):
+    inp = make_inputs(mt.tokenizer, [prompt]) # NOTE: Mistral remove space before tokens !!!
+
+    # Tokenize sentence into words and punctuation
+    tokens = nltk.word_tokenize(prompt)
+    tokens = ['"' if token in ['``', "''"] else token for token in tokens]
+    tokens = check_whitespace(prompt, tokens)
+
+    # Finding the range for each single token
+    ranges = []
+    start = 0
+    for token in tokens:
+        e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, start=start)
+        ranges.append(e_range)
+        start += len(token)  # Optimized this line by using '+=' instead of 'start = start + len(token)'
+
+    return ranges
 
 def predict_token(mt, prompts, topk=None):
     inp = make_inputs(mt.tokenizer, prompts)
@@ -307,20 +346,3 @@ def collect_embedding_tdist(mt, degree=3):
 
     return normal_to_student
 
-def collect_token_range(mt, prompt):
-    inp = make_inputs(mt.tokenizer, [prompt])
-
-    # Tokenize sentence into words and punctuation
-    tokens = nltk.word_tokenize(prompt)
-    tokens = ['"' if token in ['``', "''"] else token for token in tokens]
-    tokens = check_whitespace(prompt, tokens)
-
-    # Finding the range for each single token
-    ranges = []
-    start = 0
-    for token in tokens:
-        e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, start=start)
-        ranges.append(e_range)
-        start += len(token)  # Optimized this line by using '+=' instead of 'start = start + len(token)'
-
-    return ranges
