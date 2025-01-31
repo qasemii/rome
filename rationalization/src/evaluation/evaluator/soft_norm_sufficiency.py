@@ -6,6 +6,7 @@ from transformers import (
     Gemma2ForCausalLM,
     LlamaForCausalLM,
 )
+from hf_olmo import OLMoForCausalLM
 from .base import BaseEvaluator
 from .sufficiency import SufficiencyEvaluator
 from .comprehensiveness import ComprehensivenessEvaluator
