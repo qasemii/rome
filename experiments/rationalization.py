@@ -26,9 +26,9 @@ from experiments.utils import (
     collect_embedding_std,
     make_noisy_embeddings,
     collect_token_range,
+    check_whitespace
 )
 from dsets import KnownsDataset
-from dsets.data_utils import check_whitespace
 
 import random
 import shutil
@@ -58,7 +58,7 @@ def get_rationales(mt, prompt, scale_limit=1, mode='prob', verbose=False):
         base_scores = predict_from_input(mt.model, inp)[0]
 
     answer = predict_token(mt, [prompt])[0]
-    answer_t = mt.tokenizer.encode(answer)[0]
+    answer_t = mt.tokenizer.encode(answer, add_special_tokens=False)[0]
     base_score = base_scores[answer_t].item()  # Ensure it's a scalar
 
     tokens = nltk.word_tokenize(prompt)
@@ -100,7 +100,7 @@ def get_rationales(mt, prompt, scale_limit=1, mode='prob', verbose=False):
         # Assign score to all subword tokens in the range
         tokens_score[b:e] = score
 
-    tokens_score = tokens_score/torch.sum(tokens_score)
+    tokens_score = tokens_score / torch.sum(tokens_score)
 
     # Aggregate word scores by averaging sub-tokens scores
     word_scores = torch.tensor([
