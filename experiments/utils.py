@@ -59,11 +59,13 @@ def make_noisy_embeddings(
     rs = numpy.random.RandomState(1)  # For reproducibility, use pseudorandom noise
 
     if norm == '1':
-        bound = lambda embed_dim: embed_dim*numpy.sqrt(2/numpy.pi)
+        bound = lambda embed_dim: numpy.sqrt(2/numpy.pi) * embed_dim
     elif norm == '2':
-        bound = lambda embed_dim:numpy.sqrt(embed_dim)
+        bound = lambda embed_dim: numpy.sqrt(embed_dim)
     elif norm == 'inf':
-        bound = lambda embed_dim:numpy.sqrt(2 * numpy.log(embed_dim))
+        bound = lambda embed_dim: numpy.sqrt(2 * numpy.log(embed_dim))
+    elif norm == None:
+        bound = lambda embed_dim: 1
     else:
         raise ValueError(f'Unknown norm: {norm}')
 
