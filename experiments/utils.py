@@ -37,8 +37,8 @@ nltk.download('punkt')
 def make_noisy_embeddings(
     mt,  # The model
     inp,  # A set of inputs
-    norm,
     tokens_to_mix,  # Range of tokens to corrupt (begin, end)
+    norm='inf',
     scale=1,  # Level of noise to add
 ):
     """

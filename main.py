@@ -71,6 +71,8 @@ def main():
     aa("--output_dir", default=f"results/")
     aa("--n_samples", default=-1, type=int)
     aa("--max_new_tokens", default=1, type=int)
+    aa("--norm", default='inf')
+    aa("--mode", default='prob')
     aa("--method",
        type=str,
        default="integrated_gradients",
@@ -214,8 +216,8 @@ def main():
             if args.method == 'membre':
                 ers = get_rationales(mt,
                                      data["prompt"],
-                                     scale_limit=1,
-                                     mode='prob')
+                                     norm=args.norm,
+                                     mode=args.mode,)
                 scores = ers['token_scores']
             elif args.method == 'random':
                 scores = torch.softmax(
