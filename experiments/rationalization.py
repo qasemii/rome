@@ -49,7 +49,7 @@ torch.set_grad_enabled(False)
 nltk.download('punkt_tab')
 
 
-def get_rationales(mt, prompt, scale_limit=1, mode='prob', verbose=False):
+def get_rationales(mt, prompt, norm='inf', mode='prob', verbose=False):
     # Use single prompt instead of 11
     inp = make_inputs(mt.tokenizer, [prompt] * 11)
     device = mt.model.device
@@ -64,34 +64,34 @@ def get_rationales(mt, prompt, scale_limit=1, mode='prob', verbose=False):
     tokens = nltk.word_tokenize(prompt)
     tokens = ['"' if token in ['``', "''"] else token for token in tokens]
     tokens = check_whitespace(prompt, tokens)
-    tokens_range = collect_token_range(mt, prompt)
+    tokens_range = collect_token_range(mt, prompt, tokens)
 
     # Initialize on correct device
     tokens_score = torch.zeros(len(inp['input_ids'][0]), device=device)
 
     for idx, t_range in enumerate(tokens_range):
         b, e = t_range
-        high = scale_limit
+        high = 1
         low = 0.0
         for _ in range(10):  # with 10 iteration the precision would be 2^(-10)
-            noise = (low + high) / 2
+            k = (low + high) / 2
             with torch.no_grad():
-                low_scores = make_noisy_embeddings(mt, inp, tokens_to_mix=t_range, noise=noise)
+                low_scores = make_noisy_embeddings(mt, inp, norm=norm, tokens_to_mix=t_range, scale=k)
             prob = low_scores[answer_t].item()
 
             sorted_indices = torch.argsort(low_scores, descending=True)
             rank = (sorted_indices == answer_t).nonzero(as_tuple=True)[0].item()
 
             if rank == 0:
-                low = noise
+                low = k
             else:
-                high = noise
+                high = k
 
         if verbose:
-            print(f"Token Range: {t_range}, Noise: {noise:.4f}, Output prob: {prob}")
+            print(f"Token Range: {t_range}, Scale: {k:.4f}, Output prob: {prob}")
 
         if mode == 'noise':
-            score = scale_limit - noise
+            score = 1 - k
         elif mode == 'prob':
             score = base_score - prob
         else:

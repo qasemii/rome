@@ -37,8 +37,9 @@ nltk.download('punkt')
 def make_noisy_embeddings(
     mt,  # The model
     inp,  # A set of inputs
+    norm,
     tokens_to_mix,  # Range of tokens to corrupt (begin, end)
-    noise=0.1,  # Level of noise to add
+    scale=1,  # Level of noise to add
 ):
     """
     Runs a single causal trace.  Given a model and a batch input where
@@ -56,11 +57,18 @@ def make_noisy_embeddings(
     """
 
     rs = numpy.random.RandomState(1)  # For reproducibility, use pseudorandom noise
-    # L1: (shape[-1]*numpy.sqrt(2/numpy.pi))
-    # L2: numpy.sqrt(shape[-1])
-    # Linf: numpy.sqrt(2*numpy.log(shape[-1]))
-    prng = lambda *shape: rs.randn(*shape)/numpy.sqrt(2*numpy.log(shape[-1]))
-    noise_fn = lambda x: noise * x
+
+    if norm == '1':
+        bound = lambda embed_dim: embed_dim*numpy.sqrt(2/numpy.pi)
+    elif norm == '2':
+        bound = lambda embed_dim:numpy.sqrt(embed_dim)
+    elif norm == 'inf':
+        bound = lambda embed_dim:numpy.sqrt(2 * numpy.log(embed_dim))
+    else:
+        raise ValueError(f'Unknown norm: {norm}')
+
+    prng = lambda *shape: rs.randn(*shape)/bound(shape[-1])
+    noise_fn = lambda noise: scale * noise
 
     embed_layername = layername(mt.model)
 
@@ -206,13 +214,8 @@ def find_token_range(tokenizer, token_array, substring, start):
             break
     return (tok_start, tok_end)
 
-def collect_token_range(mt, prompt):
+def collect_token_range(mt, prompt, tokens):
     inp = make_inputs(mt.tokenizer, [prompt]) # NOTE: Mistral remove space before tokens !!!
-
-    # Tokenize sentence into words and punctuation
-    tokens = nltk.word_tokenize(prompt)
-    tokens = ['"' if token in ['``', "''"] else token for token in tokens]
-    tokens = check_whitespace(prompt, tokens)
 
     # Finding the range for each single token
     ranges = []
