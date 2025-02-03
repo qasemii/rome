@@ -73,7 +73,7 @@ def get_rationales(mt, prompt, norm='inf', mode='prob', verbose=False):
         b, e = t_range
         high = 1
         low = 0.0
-        for _ in range(10):  # with 10 iteration the precision would be 2^(-10)
+        for _ in range(10):  # with 10 iteration the precision would be 2e-10
             k = (low + high) / 2
             with torch.no_grad():
                 low_scores = make_noisy_embeddings(mt, inp, norm=norm, tokens_to_mix=t_range, scale=k)
