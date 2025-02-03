@@ -23,7 +23,6 @@ from dsets import KnownsDataset
 
 from util import nethook
 from util.globals import DATA_DIR
-from util.runningstats import Covariance, tally
 
 import nltk
 nltk.download('punkt')
