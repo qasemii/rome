@@ -57,7 +57,7 @@ def make_noisy_embeddings(
         bound = lambda embed_dim: numpy.sqrt(embed_dim)
     elif norm == 'inf':
         bound = lambda embed_dim: numpy.sqrt(2 * numpy.log(embed_dim))
-    elif norm == None:
+    elif norm == 'None':
         bound = lambda embed_dim: 1
     else:
         raise ValueError(f'Unknown norm: {norm}')

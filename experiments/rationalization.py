@@ -100,6 +100,7 @@ def get_rationales(mt, prompt, norm='inf', mode='prob', verbose=False):
         # Assign score to all subword tokens in the range
         tokens_score[b:e] = score
 
+    tokens_score = tokens_score - torch.min(tokens_score)
     tokens_score = tokens_score / torch.sum(tokens_score)
 
     # Aggregate word scores by averaging sub-tokens scores
