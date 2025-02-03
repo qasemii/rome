@@ -13,7 +13,7 @@ REMOTE_URL = f"{REMOTE_ROOT_URL}/data/dsets/counterfact.json"
 
 class CounterFactDataset(Dataset):
     def __init__(
-        self, data_dir: str, size: typing.Optional[int] = None, *args, **kwargs
+        self, mt, data_dir: str, size: typing.Optional[int] = None, *args, **kwargs
     ):
         data_dir = Path(data_dir)
         cf_loc = data_dir / "counterfact.json"
