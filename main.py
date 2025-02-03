@@ -99,17 +99,21 @@ def main():
 
     print(f"Loading {args.dataset} dataset ...")
     if args.dataset == "Knowns":
-        dataset = KnownsDataset(DATA_DIR)
+        dataset = KnownsDataset(mt, DATA_DIR)
     elif args.dataset == "Counterfact":
-        dataset = CounterFactDataset(DATA_DIR)
+        dataset = CounterFactDataset(mt, DATA_DIR)
     elif args.dataset == "LongRA":
         # dataset = CounterFactDataset(DATA_DIR)
         pass
     else:
         raise ValueError
 
-    uniform_noise = False
-
+    # Get the index of answers correctly predicted by the model
+    predictions = predict_token(
+        mt,
+        [dataset[i]['prompt'] for i in range(dataset)],
+        topk=1
+    )
     # init rationalizer
     rational_size = 3
     rational_size_ratio = None
