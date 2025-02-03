@@ -4,7 +4,6 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
-from experiments.utils import predict_token
 
 from util.globals import *
 
@@ -12,7 +11,7 @@ REMOTE_URL = f"{REMOTE_ROOT_URL}/data/dsets/known_1000.json"
 
 
 class KnownsDataset(Dataset):
-    def __init__(self, mt, data_dir: str, *args, **kwargs):
+    def __init__(self, data_dir: str, *args, **kwargs):
         data_dir = Path(data_dir)
         known_loc = data_dir / "known_1000.json"
         if not known_loc.exists():
@@ -22,18 +21,6 @@ class KnownsDataset(Dataset):
 
         with open(known_loc, "r") as f:
             self.data = json.load(f)
-
-
-        preds = predict_token(
-            mt,
-            [self.data[i]['prompt'] for i in range(len(self.data))],
-            topk=1
-        )
-
-        self.data = [
-            self.data[i] for i in range(len(self.data)) 
-            if preds[i][0].strip() == self.data[i]['attribute']
-        ]
 
         for d in self.data:
             d['id'] = d.pop('known_id')
