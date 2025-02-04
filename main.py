@@ -109,16 +109,12 @@ def main():
         raise ValueError
     
     # Filter dataset to only include examples where the predicted token matches the target
-    preds = predict_token(
-        mt,
-        [d['prompt'] for d in dataset],
-        topk=1
-    )
-
+    print(f"Filtering dataset ...")
     dataset = [
         d for i, d in enumerate(dataset) 
-        if preds[i][0].strip() == d['target']
+        if predict_token(mt, [d['prompt']], topk=1)[0][0].strip() == d['target']
     ]
+    print(f"Filtered dataset to {len(dataset)} examples")
 
     
     # init rationalizer
