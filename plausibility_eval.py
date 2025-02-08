@@ -73,7 +73,7 @@ def main():
     aa("--norm", default='2')
     aa("--mode", default='prob')
     aa("--method", type=str, default="integrated_gradients",
-       help="membre, reagent, attention, attention_last, attention_rollout, \
+       help="noiser, reagent, attention, attention_last, attention_rollout, \
              gradient_shap, input_x_gradient, integrated_gradients, lime")  # TODO
     aa("--openai_api_key", type=str, default=None)
 
@@ -125,7 +125,7 @@ def main():
     max_step = 3000
     batch = 3
 
-    if args.method == 'membre':
+    if args.method == 'noiser':
         nltk.download('punkt_tab')
     elif args.method == 'random':
         pass
@@ -237,7 +237,7 @@ def main():
 
             target_id = generated_ids[target_pos]
 
-            if args.method == 'membre':
+            if args.method == 'noiser':
                 ers = get_rationales(mt,
                                      data["prompt"],
                                      norm=args.norm,

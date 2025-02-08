@@ -76,7 +76,7 @@ def main():
     aa("--method",
        type=str,
        default="integrated_gradients",
-       help="membre, reagent, attention, attention_last, attention_rollout, \
+       help="noiser, reagent, attention, attention_last, attention_rollout, \
              gradient_shap, input_x_gradient, integrated_gradients, lime")  # TODO
 
     args = parser.parse_args()
@@ -127,7 +127,7 @@ def main():
     max_step = 3000
     batch = 3
 
-    if args.method == 'membre':
+    if args.method == 'noiser':
         nltk.download('punkt_tab')
     elif args.method == 'random':
         pass
@@ -220,7 +220,7 @@ def main():
         for target_pos in torch.arange(input_ids.shape[0], generated_ids.shape[0]):
             target_id = generated_ids[target_pos]
 
-            if args.method == 'membre':
+            if args.method == 'noiser':
                 ers = get_rationales(mt,
                                      data["prompt"],
                                      norm=args.norm,
