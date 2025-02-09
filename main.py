@@ -197,6 +197,8 @@ def main():
 
     source_soft_ns = []
     source_soft_nc = []
+    random_soft_ns = []
+    random_soft_nc = []
     print("Starting rationalization ...")
 
     samples = dataset if args.n_samples == -1 else random.choices(dataset, k=args.n_samples)
@@ -211,10 +213,10 @@ def main():
                                           max_new_tokens=args.max_new_tokens,
                                           do_sample=False,
                                           pad_token_id=pad_token_id)[0]
-
-        # generated_texts = mt.tokenizer.decode(generated_ids) for token in generated_ids
+        # generated_texts = mt.tokenizer.decode(generated_ids)
         # print(f'generated full sequence --> {generated_texts}')
 
+        scores_dict = {}
         # Gemma and Llama add [bos] token which should be exclude from input prompt when
         start_pos = 1 if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else 0
         for target_pos in torch.arange(input_ids.shape[0], generated_ids.shape[0]):
@@ -252,17 +254,31 @@ def main():
                                                                         torch.unsqueeze(target_id, 0), rand_scores)
                 # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
 
-                # # compute metrics on Soft-NS and Soft-NC
-                # metric_soft_ns = torch.log(source_soft_ns_step / random_soft_ns_step)
-                # metric_soft_nc = torch.log(source_soft_nc_step / random_soft_nc_step)
-                # print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
-
                 source_soft_ns.append(source_soft_ns_step.item())
                 source_soft_nc.append(source_soft_nc_step.item())
+
+                random_soft_ns.append(random_soft_ns_step.item())
+                random_soft_nc.append(random_soft_nc_step.item())
 
             except:
                 print(f"Unable to get the score for {idx}")
                 continue
+
+            scores_dict[f'{target_pos}'] = scores
+
+
+
+    results.append({'id': data["id"],
+                    'prompt': data["prompt"],
+                    'generated_output':  generated_texts,
+                    'attributions': scores_dict})
+
+            
+    # # compute metrics on Soft-NS and Soft-NC
+    metric_soft_ns = torch.log(torch.mean(torch.tensor(source_soft_ns)) / torch.mean(torch.tensor(random_soft_ns)))
+    metric_soft_nc = torch.log(torch.mean(torch.tensor(source_soft_nc)) / torch.mean(torch.tensor(random_soft_nc)))
+    print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
+    
 
     results = {'source_soft_ns': source_soft_ns,
                'source_soft_nc': source_soft_nc}
