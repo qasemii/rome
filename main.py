@@ -66,16 +66,16 @@ def main():
     def aa(*args, **kwargs):
         parser.add_argument(*args, **kwargs)
 
-    aa("--model_name", default="gpt2-medium")
+    aa("--model_name", default="Qwen/Qwen2-0.5B")
     aa("--dataset", default="Knowns")
     aa("--output_dir", default=f"results/")
     aa("--n_samples", default=-1, type=int)
     aa("--max_new_tokens", default=1, type=int)
-    aa("--norm", default='inf')
+    aa("--norm", default='2')
     aa("--mode", default='prob')
     aa("--method",
        type=str,
-       default="integrated_gradients",
+       default="noiser",
        help="noiser, reagent, attention, attention_last, attention_rollout, \
              gradient_shap, input_x_gradient, integrated_gradients, lime")  # TODO
 
