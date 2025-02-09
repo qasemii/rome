@@ -1,51 +1,18 @@
-import os, re, json
-import torch, numpy
-from collections import defaultdict
-from itertools import combinations
+import torch
+import random
+import nltk
 
-from util import nethook
-from util.globals import DATA_DIR
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers import (
-    Qwen2ForCausalLM,
-    Gemma2ForCausalLM,
-    LlamaForCausalLM,
-    OlmoForCausalLM,
-)
-from hf_olmo import OLMoForCausalLM
-from experiments.utils import (
-    ModelAndTokenizer,
-    layername,
-)
 from experiments.utils import (
     make_inputs,
-    decode_tokens,
-    find_token_range,
     predict_token,
     predict_from_input,
-    collect_embedding_std,
     make_noisy_embeddings,
     collect_token_range,
     check_whitespace
 )
-from dsets import KnownsDataset
-
-import random
-import shutil
-import nltk
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-import pickle
-from tqdm import tqdm
-import json
-from datasets import load_dataset
-from pprint import pprint
 
 random.seed(42)
-
 torch.set_grad_enabled(False)
-
 nltk.download('punkt_tab')
 
 

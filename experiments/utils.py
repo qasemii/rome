@@ -1,9 +1,4 @@
-import argparse
-import json
 import os
-import re
-from collections import defaultdict
-
 import numpy
 import torch
 from datasets import load_dataset
@@ -14,14 +9,10 @@ from transformers import (
     Qwen2ForCausalLM,
     Gemma2ForCausalLM,
     LlamaForCausalLM,
-    OlmoForCausalLM,
 )
 from hf_olmo import OLMoForCausalLM
 
-from dsets import KnownsDataset
-
 from util import nethook
-from util.globals import DATA_DIR
 
 import nltk
 nltk.download('punkt')

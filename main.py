@@ -1,23 +1,19 @@
 import argparse
-import os, re, json
-import torch, numpy
-from collections import defaultdict
-from util import nethook
+import os
+import torch
+import random
+import nltk
+import pickle
+from tqdm import tqdm
+from pathlib import Path
 from transformers import (
-    Qwen2ForCausalLM,
     Gemma2ForCausalLM,
     LlamaForCausalLM,
-    OlmoForCausalLM,
 )
-from hf_olmo import OLMoForCausalLM
 from util.globals import DATA_DIR
 
 from experiments.utils import (
     ModelAndTokenizer,
-    layername,
-    collect_embedding_std,
-)
-from experiments.utils import (
     predict_token,
 )
 from experiments.rationalization import (
@@ -28,17 +24,6 @@ from dsets import (
     KnownsDataset,
     CounterFactDataset,
 )
-from dsets.data_utils import match_tokens_with_scores
-
-import random
-import shutil
-import nltk
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-import pickle
-from tqdm import tqdm
-from pathlib import Path
 
 from rationalization.rationalizer.aggregate_rationalizer import AggregateRationalizer
 from rationalization.rationalizer.importance_score_evaluator.delta_prob import DeltaProbImportanceScoreEvaluator
@@ -49,8 +34,6 @@ from rationalization.rationalizer.token_replacement.token_sampler.postag import 
 from rationalization.src.evaluation.evaluator.soft_norm_sufficiency import SoftNormalizedSufficiencyEvaluator
 from rationalization.src.evaluation.evaluator.soft_norm_comprehensiveness import \
     SoftNormalizedComprehensivenessEvaluator
-
-import csv
 
 device = "cuda"
 
