@@ -17,7 +17,6 @@ from transformers import (
     OlmoForCausalLM,
 )
 from hf_olmo import OLMoForCausalLM
-from peft import AutoPeftModelForCausalLM
 
 from dsets import KnownsDataset
 
