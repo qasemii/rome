@@ -199,6 +199,7 @@ def main():
     source_soft_nc = []
     random_soft_ns = []
     random_soft_nc = []
+    results = []
     print("Starting rationalization ...")
 
     samples = dataset if args.n_samples == -1 else random.choices(dataset, k=args.n_samples)
@@ -264,14 +265,14 @@ def main():
                 print(f"Unable to get the score for {idx}")
                 continue
 
-            scores_dict[f'{target_pos}'] = scores
+            # scores_dict[f'{target_pos}'] = scores
 
 
 
-    results.append({'id': data["id"],
-                    'prompt': data["prompt"],
-                    'generated_output':  generated_texts,
-                    'attributions': scores_dict})
+        results.append({'id': data["id"],
+                        'prompt': data["prompt"],
+                        'target': data["target"],
+                        'attributions': scores})
 
             
     # # compute metrics on Soft-NS and Soft-NC
@@ -280,10 +281,6 @@ def main():
     print(f"metric_soft_ns: {metric_soft_ns}, metric_soft_nc: {metric_soft_nc}")
     
 
-    results = {'source_soft_ns': source_soft_ns,
-               'source_soft_nc': source_soft_nc}
-    # 'random_soft_ns': random_soft_ns_step.item(),
-    # 'random_soft_nc': random_soft_nc_step.item(),}
     # export results
     Path(result_dir).mkdir(exist_ok=True, parents=True)
     with open(os.path.join(result_dir, f'{args.method}.pkl'), 'wb') as outfile:
