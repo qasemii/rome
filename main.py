@@ -283,7 +283,8 @@ def main():
 
     # export results
     Path(result_dir).mkdir(exist_ok=True, parents=True)
-    with open(os.path.join(result_dir, f'{args.method}.pkl'), 'wb') as outfile:
+    method = f'{args.method}_{args.norm}_{args.mode}' if args.method == 'noiser' else args.method
+    with open(os.path.join(result_dir, f'{method}.pkl'), 'wb') as outfile:
         pickle.dump(results, outfile)
 
 
