@@ -97,7 +97,7 @@ def main():
     # Filter dataset to only include examples where the predicted token matches the target
     print(f"Filtering dataset ...")
     dataset = [
-        d for i, d in enumerate(dataset[:100]) 
+        d for i, d in enumerate(dataset) 
         if predict_token(mt, [d['prompt']], topk=1)[0][0].strip() == d['target']
     ]
     print(f"Filtered dataset to {len(dataset)} examples")
