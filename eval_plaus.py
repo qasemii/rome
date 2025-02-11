@@ -239,7 +239,8 @@ def main():
                 scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
                 scores = match_tokens_with_scores(scores.squeeze(), tokens_range)
             
-            topk_indices = torch.topk(scores, k=args.topk).indices.sort().values
+            k = args.topk * len(tokens) // 100
+            topk_indices = torch.topk(scores, k=k).indices.sort().values
             topk_words = [tokens[i.item()] for i in topk_indices]
             topk_scores = torch.gather(scores, 0, topk_indices)
 
@@ -256,15 +257,15 @@ def main():
                 plaus_scores.append(torch.sum(topk_scores).item())
             else:
                 plaus_scores.append(0)
-            
+
             # # compute metrics on Soft-NS and Soft-NC
-            print(f"Prompt: {data['prompt']}")
-            print(f"tokens: {topk_words}")
-            print(f"scores: {topk_scores}")
-            print(f'GPT prediction: {prediction}')
-            print("-"*10)
+            # print(f"Prompt: {data['prompt']}")
+            # print(f"tokens: {topk_words}")
+            # print(f"scores: {topk_scores}")
+            # print(f'GPT prediction: {prediction}')
+            # print("-"*10)
     print(f"true prediction rate: {n_true_predictions/len(samples)}")
-    print(f"plausibility score: {torch.mean(torch.tensor(plaus_scores))}")
+    print(f"plausibility score: {torch.mean(torch.tensor(plaus_scores, dtype=torch.float16)).item()}")
     
 
 
