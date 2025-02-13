@@ -59,8 +59,8 @@ def main():
     aa("--method",
        type=str,
        default="noiser",
-       help="noiser, reagent, attention, attention_last, attention_rollout, \
-             gradient_shap, input_x_gradient, integrated_gradients, lime")  # TODO
+       help="noiser, attention, attention_last, attention_rollout, \
+             gradient_shap, input_x_gradient, integrated_gradients, lime, reagent, occlusion")  # TODO
 
     args = parser.parse_args()
 
