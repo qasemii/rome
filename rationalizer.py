@@ -134,7 +134,6 @@ def rationalize(prompt="Hello",
 
     print("Starting rationalization ...")
 
-    prompt = prompt
     input_ids = mt.tokenizer(prompt, return_tensors='pt')['input_ids'][0].to(mt.model.device)
     attention_mask = mt.tokenizer(prompt, return_tensors='pt')['attention_mask'][0].to(mt.model.device)
 
@@ -146,13 +145,13 @@ def rationalize(prompt="Hello",
     full_text = mt.tokenizer.decode(generated_ids)
     # print(f'generated full sequence --> {generated_texts}')
 
-    tokens = nltk.word_tokenize(full_text)
+    tokens = nltk.word_tokenize(prompt)
     tokens = ['"' if token in ['``', "''"] else token for token in tokens]
-    tokens = check_whitespace(full_text, tokens)
-    tokens_range = collect_token_range(mt, full_text, tokens)
+    tokens = check_whitespace(prompt, tokens)
+    tokens_range = collect_token_range(mt, prompt, tokens)
 
     results = {'prompt': prompt,
-                'target': mt.tokenizer.decode(generated_ids[input_ids.shape[0]:]),
+                'target': [],
                 'entities': tokens,
                 'attributions': {}
                 }
@@ -161,7 +160,9 @@ def rationalize(prompt="Hello",
     start_pos = 1 if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else 0
     for target_pos in torch.arange(input_ids.shape[0], generated_ids.shape[0]):
         target_id = generated_ids[target_pos]
-
+        next_token = mt.tokenizer.decode(target_id)
+        results['target'].append(next_token)
+        
         if method == 'noiser':
             prompt = mt.tokenizer.decode(generated_ids[:target_pos])
             ers = get_rationales(mt,
@@ -176,9 +177,10 @@ def rationalize(prompt="Hello",
             rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
             scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
             scores = match_tokens_with_scores(scores.squeeze(), tokens_range)
-            
+            if method=='occlusion':
+                scores = scores/torch.sum(scores)
 
-        results['attributions'][tokens[target_pos]] = scores
+        results['attributions'][next_token] = scores
 
     print(results)
     return results
