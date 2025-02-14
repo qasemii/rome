@@ -218,7 +218,8 @@ def main():
             else:
                 rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
                 scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
-
+                if args.method=='occlusion':
+                    scores = scores/torch.sum(scores)
             # importance score by Random Score
             rand_scores = torch.softmax(
                 torch.rand(torch.unsqueeze(generated_ids[:target_pos], 0).shape, device=mt.model.device), dim=-1)
