@@ -78,6 +78,11 @@ def main():
         low_cpu_mem_usage=True,
         torch_dtype=torch.float16,
     )
+    
+    if mt.tokenizer.bos_token is None:
+       mt.tokenizer.bos_token = "<bos>"
+       mt.tokenizer.bos_token_id = mt.tokenizer.convert_tokens_to_ids("<bos>")
+    
     pad_token_id = mt.tokenizer.pad_token_id if mt.tokenizer.pad_token_id is not None else mt.tokenizer.eos_token_id
 
     print(f"Loading {args.dataset} dataset ...")
