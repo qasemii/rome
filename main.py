@@ -78,7 +78,7 @@ def main():
         low_cpu_mem_usage=True,
         torch_dtype=torch.float16,
     )
-    
+
     if mt.tokenizer.bos_token is None:
        mt.tokenizer.bos_token = "<bos>"
        mt.tokenizer.bos_token_id = mt.tokenizer.convert_tokens_to_ids("<bos>")
@@ -202,57 +202,53 @@ def main():
                                           max_new_tokens=args.max_new_tokens,
                                           do_sample=False,
                                           pad_token_id=pad_token_id)[0]
+        target_id = generated_ids[-1]
         # generated_texts = mt.tokenizer.decode(generated_ids)
         # print(f'generated full sequence --> {generated_texts}')
 
-        scores_dict = {}
         # Gemma and Llama add [bos] token which should be exclude from input prompt when
-        start_pos = 1 if isinstance(mt.model, Gemma2ForCausalLM) or isinstance(mt.model, LlamaForCausalLM) else 0
-        for target_pos in torch.arange(input_ids.shape[0], generated_ids.shape[0]):
-            target_id = generated_ids[target_pos]
+        if args.method == 'noiser':
+            ers = get_rationales(mt,
+                                    data["prompt"],
+                                    norm=args.norm,
+                                    mode=args.mode,)
+            scores = ers['token_scores']
+        elif args.method == 'random':
+            scores = torch.softmax(
+                torch.rand(torch.unsqueeze(input_ids, 0).shape, device=mt.model.device), dim=-1)
+        else:
+            rationalizer.rationalize(torch.unsqueeze(input_ids, 0), torch.unsqueeze(target_id, 0))
+            scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
+            if args.method=='occlusion':
+                scores = scores/torch.sum(scores)
+        # importance score by Random Score
+        rand_scores = torch.softmax(
+            torch.rand(torch.unsqueeze(input_ids, 0).shape, device=mt.model.device), dim=-1)
 
-            if args.method == 'noiser':
-                ers = get_rationales(mt,
-                                     data["prompt"],
-                                     norm=args.norm,
-                                     mode=args.mode,)
-                scores = ers['token_scores']
-            elif args.method == 'random':
-                scores = torch.softmax(
-                    torch.rand(torch.unsqueeze(generated_ids[:target_pos], 0).shape, device=mt.model.device), dim=-1)
-            else:
-                rationalizer.rationalize(torch.unsqueeze(generated_ids[:target_pos], 0), torch.unsqueeze(target_id, 0))
-                scores = rationalizer.mean_important_score.unsqueeze(dim=0).to(mt.model.device)
-                if args.method=='occlusion':
-                    scores = scores/torch.sum(scores)
-            # importance score by Random Score
-            rand_scores = torch.softmax(
-                torch.rand(torch.unsqueeze(generated_ids[:target_pos], 0).shape, device=mt.model.device), dim=-1)
+        try:
+            # compute Soft-NS and Soft-NC on source importance score
+            source_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(input_ids, 0),
+                                                                    torch.unsqueeze(target_id, 0), scores)
+            source_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(input_ids, 0),
+                                                                    torch.unsqueeze(target_id, 0), scores)
+            # print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
 
-            try:
-                # compute Soft-NS and Soft-NC on source importance score
-                source_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
-                                                                        torch.unsqueeze(target_id, 0), scores)
-                source_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
-                                                                        torch.unsqueeze(target_id, 0), scores)
-                # print(f"Source Soft-NS: {source_soft_ns_step}, Source Soft-NC: {source_soft_nc_step}")
+            # compute Soft-NS and Soft-NC on random importance score
+            random_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(input_ids, 0),
+                                                                    torch.unsqueeze(target_id, 0), rand_scores)
+            random_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(input_ids, 0),
+                                                                    torch.unsqueeze(target_id, 0), rand_scores)
+            # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
 
-                # compute Soft-NS and Soft-NC on random importance score
-                random_soft_ns_step = soft_norm_suff_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
-                                                                        torch.unsqueeze(target_id, 0), rand_scores)
-                random_soft_nc_step = soft_norm_comp_evaluator.evaluate(torch.unsqueeze(generated_ids[:target_pos], 0),
-                                                                        torch.unsqueeze(target_id, 0), rand_scores)
-                # print(f"Random Soft-NS: {random_soft_ns_step}, Random Soft-NC: {random_soft_nc_step}")
+            source_soft_ns.append(source_soft_ns_step.item())
+            source_soft_nc.append(source_soft_nc_step.item())
 
-                source_soft_ns.append(source_soft_ns_step.item())
-                source_soft_nc.append(source_soft_nc_step.item())
+            random_soft_ns.append(random_soft_ns_step.item())
+            random_soft_nc.append(random_soft_nc_step.item())
 
-                random_soft_ns.append(random_soft_ns_step.item())
-                random_soft_nc.append(random_soft_nc_step.item())
-
-            except:
-                print(f"Unable to get the score for {idx}")
-                continue
+        except:
+            print(f"Unable to get the score for {idx}")
+            continue
 
             # scores_dict[f'{target_pos}'] = scores
 
