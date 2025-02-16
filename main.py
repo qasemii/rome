@@ -80,10 +80,11 @@ def main():
     )
     if mt.tokenizer.pad_token_id is None:
         mt.tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-        pad_token_id = mt.tokenizer.pad_token_id
+    pad_token_id = mt.tokenizer.pad_token_id
+
     if mt.tokenizer.unk_token_id is None:
         mt.tokenizer.add_special_tokens({"unk_token": "[UNK]"})
-        unk_token_id = mt.tokenizer.unk_token_id
+    unk_token_id = mt.tokenizer.unk_token_id
 
     # pad_token_id = mt.tokenizer.pad_token_id if mt.tokenizer.pad_token_id is not None else mt.tokenizer.add_special_tokens({"pad_token": "[PAD]"})
     # unk_token_id = mt.tokenizer.unk_token_id if mt.tokenizer.unk_token_id is not None else mt.tokenizer.add_special_tokens({"unk_token": "[UNK]"})
