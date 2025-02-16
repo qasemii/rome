@@ -78,8 +78,16 @@ def main():
         low_cpu_mem_usage=True,
         torch_dtype=torch.float16,
     )
-    pad_token_id = mt.tokenizer.pad_token_id if mt.tokenizer.pad_token_id is not None else mt.tokenizer.eos_token_id
+    if mt.tokenizer.pad_token_id is None:
+        mt.tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+        pad_token_id = mt.tokenizer.pad_token_id
+    if mt.tokenizer.unk_token_id is None:
+        mt.tokenizer.add_special_tokens({"unk_token": "[UNK]"})
+        unk_token_id = mt.tokenizer.unk_token_id
 
+    # pad_token_id = mt.tokenizer.pad_token_id if mt.tokenizer.pad_token_id is not None else mt.tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+    # unk_token_id = mt.tokenizer.unk_token_id if mt.tokenizer.unk_token_id is not None else mt.tokenizer.add_special_tokens({"unk_token": "[UNK]"})
+    
     print(f"Loading {args.dataset} dataset ...")
     if args.dataset == "Knowns":
         dataset = KnownsDataset(DATA_DIR)
@@ -196,7 +204,8 @@ def main():
                                           attention_mask=torch.unsqueeze(attention_mask, 0),
                                           max_new_tokens=args.max_new_tokens,
                                           do_sample=False,
-                                          pad_token_id=pad_token_id)[0]
+                                          pad_token_id=pad_token_id,
+                                          unk_token_id=unk_token_id)[0]
         # generated_texts = mt.tokenizer.decode(generated_ids)
         # print(f'generated full sequence --> {generated_texts}')
 
