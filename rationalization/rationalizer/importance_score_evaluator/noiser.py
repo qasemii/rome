@@ -1,11 +1,8 @@
-import logging
-
-import math
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from .base import BaseImportanceScoreEvaluator
 
-from .utils import *
+from .utils import get_rationales
 class NoiserImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
     """Importance Score Evaluator
     

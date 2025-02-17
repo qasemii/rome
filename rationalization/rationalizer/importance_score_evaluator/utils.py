@@ -1,35 +1,20 @@
 import torch
 import random
 import nltk
-
-random.seed(42)
-torch.set_grad_enabled(False)
-nltk.download('punkt_tab')
-
-import os
 import numpy
-import torch
-from datasets import load_dataset
-from matplotlib import pyplot as plt
-from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers import (
-    Qwen2ForCausalLM,
-    Gemma2ForCausalLM,
-    LlamaForCausalLM,
-)
-from hf_olmo import OLMoForCausalLM
-
-import nltk
-nltk.download('punkt')
+import numpy as np
 
 import contextlib
 import copy
 import inspect
 from collections import OrderedDict
 
-import torch
-
+from transformers import (
+    Qwen2ForCausalLM,
+    Gemma2ForCausalLM,
+    LlamaForCausalLM,
+)
+from hf_olmo import OLMoForCausalLM
 
 
 def make_noisy_embeddings(
@@ -56,16 +41,12 @@ def make_noisy_embeddings(
 
     rs = numpy.random.RandomState(1)  # For reproducibility, use pseudorandom noise
 
-    if norm == '1':
-        bound = lambda embed_dim: numpy.sqrt(2/numpy.pi) * embed_dim
-    elif norm == '2':
-        bound = lambda embed_dim: numpy.sqrt(embed_dim)
-    elif norm == 'inf':
-        bound = lambda embed_dim: numpy.sqrt(2 * numpy.log(embed_dim))
-    elif norm == 'None':
-        bound = lambda embed_dim: 1
-    else:
-        raise ValueError(f'Unknown norm: {norm}')
+    bounds = {'1': lambda d: np.sqrt(2/np.pi) * d, 
+              '2': lambda d: np.sqrt(d), 
+              'inf': lambda d: np.sqrt(2 * np.log(d)), 
+              'None': lambda d: 1}
+    bound = bounds.get(norm, lambda _: ValueError(f'Unknown norm: {norm}'))
+
 
     prng = lambda *shape: rs.randn(*shape)/bound(shape[-1])
     noise_fn = lambda noise: scale * noise
@@ -75,13 +56,6 @@ def make_noisy_embeddings(
     def patch_rep(x):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
         b, e = tokens_to_mix
-
-        ## Replace the target token embeddings with [MASK] embeddings ##########################################
-        # tokenizer.add_special_tokens({"mask_token": "[MASK]"})
-        # mask_id = tokenizer.mask_token_id
-        # mask_embedding = model.get_input_embeddings().weight[mask_id]
-        # x[1:, b:e] = mask_embedding
-
         # Add noise to target token
         noise_data = noise_fn(torch.from_numpy(prng(x.shape[0] - 1, e - b, x.shape[2]))).to(x.device)
         x[1:, b:e] += noise_data
@@ -99,58 +73,6 @@ def make_noisy_embeddings(
     probs = torch.softmax(outputs_exp.logits[1:, -1, :], dim=1).mean(dim=0)
     return probs
 
-class ModelAndTokenizer:
-    """
-    An object to hold on to (or automatically download and hold)
-    a GPT-style language model and tokenizer.  Counts the number
-    of layers.
-    """
-
-    def __init__(
-        self,
-        model_name=None,
-        model=None,
-        tokenizer=None,
-        low_cpu_mem_usage=False,
-        torch_dtype=None,
-        device_map="auto",  # Use device map for efficient memory usage
-        fp16=False,  # Use fp16 for reduced memory usage
-    ):
-        if tokenizer is None:
-            assert model_name is not None
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-        if model is None:
-            assert model_name is not None
-            model_kwargs = {
-                "low_cpu_mem_usage": low_cpu_mem_usage,
-                "torch_dtype": torch_dtype,
-                "device_map": device_map,
-            }
-            if fp16:
-                model_kwargs["torch_dtype"] = torch.float16  # Use fp16
-
-            model = AutoModelForCausalLM.from_pretrained(
-                model_name, **model_kwargs
-            )
-            if isinstance(model, OLMoForCausalLM):
-                model.tie_weights()
-
-            model.eval()#.cuda()
-
-        if tokenizer.pad_token_id is None:
-            tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-        if tokenizer.mask_token_id is None:
-            tokenizer.add_special_tokens({"mask_token": "[MASK]"})
-
-        self.tokenizer = tokenizer
-        self.model = model
-
-    def __repr__(self):
-        return (
-            f"ModelAndTokenizer(model: {type(self.model).__name__} "
-            f"tokenizer: {type(self.tokenizer).__name__})"
-        )
-
 def layername(model):
     if isinstance(model, Qwen2ForCausalLM) or isinstance(model, Gemma2ForCausalLM) or isinstance(model, LlamaForCausalLM):
         return "model.embed_tokens"
@@ -158,25 +80,6 @@ def layername(model):
         return "model.transformer.wte"
     else:
         raise ValueError(f"Unsupported model {type(self.model)}")
-
-def make_inputs(tokenizer, prompts, device="cuda"):
-    token_lists = [tokenizer.encode(p) for p in prompts]
-    maxlen = max(len(t) for t in token_lists)
-    if "[PAD]" in tokenizer.all_special_tokens:
-        pad_id = tokenizer.all_special_ids[tokenizer.all_special_tokens.index("[PAD]")]
-    else:
-        pad_id = 0
-    input_ids = [[pad_id] * (maxlen - len(t)) + t for t in token_lists]
-    attention_mask = [[0] * (maxlen - len(t)) + [1] * len(t) for t in token_lists]
-    return dict(
-        input_ids=torch.tensor(input_ids).to(device),
-        attention_mask=torch.tensor(attention_mask).to(device),
-    )
-
-def decode_tokens(tokenizer, token_array):
-    if hasattr(token_array, "shape") and len(token_array.shape) > 1:
-        return [decode_tokens(tokenizer, row) for row in token_array]
-    return [tokenizer.decode([t]) for t in token_array]
 
 def check_whitespace(prompt, tokens):
     results = []
@@ -200,7 +103,7 @@ def check_whitespace(prompt, tokens):
     return results
 
 def find_token_range(tokenizer, token_array, substring, start):
-    toks = decode_tokens(tokenizer, token_array)
+    toks = [tokenizer.decode([t]) for t in token_array]
     whole_string = "".join(toks)
     char_loc = whole_string.index(substring, start)
     loc = 0
@@ -215,7 +118,7 @@ def find_token_range(tokenizer, token_array, substring, start):
     return (tok_start, tok_end)
 
 def collect_token_range(tokenizer, prompt, tokens):
-    inp = make_inputs(tokenizer, [prompt]) # NOTE: Mistral remove space before tokens !!!
+    inp = tokenizer(prompt, return_tensors='pt')
 
     # Finding the range for each single token
     ranges = []
@@ -226,32 +129,6 @@ def collect_token_range(tokenizer, prompt, tokens):
         start += len(token)  # Optimized this line by using '+=' instead of 'start = start + len(token)'
 
     return ranges
-
-def predict_token(model, tokenizer, prompts, topk=None):
-    inp = make_inputs(tokenizer, prompts)
-    logits = model(**inp)["logits"]
-    probs = torch.softmax(logits[:, -1, :], dim=-1)  # Correct slicing and dimension
-
-    if topk:
-        probs, preds = torch.topk(probs, topk, sorted=True, dim=-1)
-        result = [
-            (tokenizer.decode(pred.item()), prob.item())
-            for pred, prob in zip(preds.squeeze(0), probs.squeeze(0))  # Squeeze batch dimension for single prompt
-        ]
-
-    else:
-        probs, preds = torch.max(probs, dim=-1, keepdim=True)  # Keep dims for consistency
-        result = (tokenizer.decode(preds.squeeze(0).item()), probs.squeeze(0).item())
-
-    return result
-
-def predict_from_input(model, inp):
-    logits = model(**inp)["logits"]
-    probs = torch.softmax(logits[:, -1, :], dim=1)
-
-    return probs
-
-
 
 def get_rationales(model, tokenizer, prompt, norm='inf', mode='prob'):
     # Use single prompt instead of 11
@@ -274,7 +151,7 @@ def get_rationales(model, tokenizer, prompt, norm='inf', mode='prob'):
     # Initialize on correct device
     tokens_score = torch.zeros(len(inp['input_ids'][0]), device=device)
 
-    for idx, t_range in enumerate(tokens_range):
+    for t_range in tokens_range:
         b, e = t_range
         high = 1.0
         low = 0.0
@@ -319,17 +196,252 @@ def get_rationales(model, tokenizer, prompt, norm='inf', mode='prob'):
     #     'token_scores': tokens_score.unsqueeze(0)
     # }
 
+def recursive_copy(x, clone=None, detach=None, retain_grad=None):
+    """
+    Copies a reference to a tensor, or an object that contains tensors,
+    optionally detaching and cloning the tensor(s).  If retain_grad is
+    true, the original tensors are marked to have grads retained.
+    """
+    if not clone and not detach and not retain_grad:
+        return x
+    if isinstance(x, torch.Tensor):
+        if retain_grad:
+            if not x.requires_grad:
+                x.requires_grad = True
+            x.retain_grad()
+        elif detach:
+            x = x.detach()
+        if clone:
+            x = x.clone()
+        return x
+    # Only dicts, lists, and tuples (and subclasses) can be copied.
+    if isinstance(x, dict):
+        return type(x)({k: recursive_copy(v) for k, v in x.items()})
+    elif isinstance(x, (list, tuple)):
+        return type(x)([recursive_copy(v) for v in x])
+    else:
+        assert False, f"Unknown type {type(x)} cannot be broken into tensors."
 
+def subsequence(
+    sequential,
+    first_layer=None,
+    last_layer=None,
+    after_layer=None,
+    upto_layer=None,
+    single_layer=None,
+    share_weights=False,
+):
+    """
+    Creates a subsequence of a pytorch Sequential model, copying over
+    modules together with parameters for the subsequence.  Only
+    modules from first_layer to last_layer (inclusive) are included,
+    or modules between after_layer and upto_layer (exclusive).
+    Handles descent into dotted layer names as long as all references
+    are within nested Sequential models.
 
+    If share_weights is True, then references the original modules
+    and their parameters without copying them.  Otherwise, by default,
+    makes a separate brand-new copy.
+    """
+    assert (single_layer is None) or (
+        first_layer is last_layer is after_layer is upto_layer is None
+    )
+    if single_layer is not None:
+        first_layer = single_layer
+        last_layer = single_layer
+    first, last, after, upto = [
+        None if d is None else d.split(".")
+        for d in [first_layer, last_layer, after_layer, upto_layer]
+    ]
+    return hierarchical_subsequence(
+        sequential,
+        first=first,
+        last=last,
+        after=after,
+        upto=upto,
+        share_weights=share_weights,
+    )
 
+def hierarchical_subsequence(
+    sequential, first, last, after, upto, share_weights=False, depth=0
+):
+    """
+    Recursive helper for subsequence() to support descent into dotted
+    layer names.  In this helper, first, last, after, and upto are
+    arrays of names resulting from splitting on dots.  Can only
+    descend into nested Sequentials.
+    """
+    assert (last is None) or (upto is None)
+    assert (first is None) or (after is None)
+    if first is last is after is upto is None:
+        return sequential if share_weights else copy.deepcopy(sequential)
+    assert isinstance(sequential, torch.nn.Sequential), (
+        ".".join((first or last or after or upto)[:depth] or "arg") + " not Sequential"
+    )
+    including_children = (first is None) and (after is None)
+    included_children = OrderedDict()
+    # A = current level short name of A.
+    # AN = full name for recursive descent if not innermost.
+    (F, FN), (L, LN), (A, AN), (U, UN) = [
+        (d[depth], (None if len(d) == depth + 1 else d))
+        if d is not None
+        else (None, None)
+        for d in [first, last, after, upto]
+    ]
+    for name, layer in sequential._modules.items():
+        if name == F:
+            first = None
+            including_children = True
+        if name == A and AN is not None:  # just like F if not a leaf.
+            after = None
+            including_children = True
+        if name == U and UN is None:
+            upto = None
+            including_children = False
+        if including_children:
+            # AR = full name for recursive descent if name matches.
+            FR, LR, AR, UR = [
+                n if n is None or n[depth] == name else None for n in [FN, LN, AN, UN]
+            ]
+            chosen = hierarchical_subsequence(
+                layer,
+                first=FR,
+                last=LR,
+                after=AR,
+                upto=UR,
+                share_weights=share_weights,
+                depth=depth + 1,
+            )
+            if chosen is not None:
+                included_children[name] = chosen
+        if name == L:
+            last = None
+            including_children = False
+        if name == U and UN is not None:  # just like L if not a leaf.
+            upto = None
+            including_children = False
+        if name == A and AN is None:
+            after = None
+            including_children = True
+    for name in [first, last, after, upto]:
+        if name is not None:
+            raise ValueError("Layer %s not found" % ".".join(name))
+    # Omit empty subsequences except at the outermost level,
+    # where we should not return None.
+    if not len(included_children) and depth > 0:
+        return None
+    result = torch.nn.Sequential(included_children)
+    result.training = sequential.training
+    return result
 
+def set_requires_grad(requires_grad, *models):
+    """
+    Sets requires_grad true or false for all parameters within the
+    models passed.
+    """
+    for model in models:
+        if isinstance(model, torch.nn.Module):
+            for param in model.parameters():
+                param.requires_grad = requires_grad
+        elif isinstance(model, (torch.nn.Parameter, torch.Tensor)):
+            model.requires_grad = requires_grad
+        else:
+            assert False, "unknown type %r" % type(model)
 
+def get_module(model, name):
+    """
+    Finds the named module within the given model.
+    """
+    for n, m in model.named_modules():
+        if n == name:
+            return m
+    raise LookupError(name)
 
+def get_parameter(model, name):
+    """
+    Finds the named parameter within the given model.
+    """
+    for n, p in model.named_parameters():
+        if n == name:
+            return p
+    raise LookupError(name)
 
+def replace_module(model, name, new_module):
+    """
+    Replaces the named module within the given model.
+    """
+    if "." in name:
+        parent_name, attr_name = name.rsplit(".", 1)
+        model = get_module(model, parent_name)
+    # original_module = getattr(model, attr_name)
+    setattr(model, attr_name, new_module)
 
-
-
-
+def invoke_with_optional_args(fn, *args, **kwargs):
+    """
+    Invokes a function with only the arguments that it
+    is written to accept, giving priority to arguments
+    that match by-name, using the following rules.
+    (1) arguments with matching names are passed by name.
+    (2) remaining non-name-matched args are passed by order.
+    (3) extra caller arguments that the function cannot
+        accept are not passed.
+    (4) extra required function arguments that the caller
+        cannot provide cause a TypeError to be raised.
+    Ordinary python calling conventions are helpful for
+    supporting a function that might be revised to accept
+    extra arguments in a newer version, without requiring the
+    caller to pass those new arguments.  This function helps
+    support function callers that might be revised to supply
+    extra arguments, without requiring the callee to accept
+    those new arguments.
+    """
+    argspec = inspect.getfullargspec(fn)
+    pass_args = []
+    used_kw = set()
+    unmatched_pos = []
+    used_pos = 0
+    defaulted_pos = len(argspec.args) - (
+        0 if not argspec.defaults else len(argspec.defaults)
+    )
+    # Pass positional args that match name first, then by position.
+    for i, n in enumerate(argspec.args):
+        if n in kwargs:
+            pass_args.append(kwargs[n])
+            used_kw.add(n)
+        elif used_pos < len(args):
+            pass_args.append(args[used_pos])
+            used_pos += 1
+        else:
+            unmatched_pos.append(len(pass_args))
+            pass_args.append(
+                None if i < defaulted_pos else argspec.defaults[i - defaulted_pos]
+            )
+    # Fill unmatched positional args with unmatched keyword args in order.
+    if len(unmatched_pos):
+        for k, v in kwargs.items():
+            if k in used_kw or k in argspec.kwonlyargs:
+                continue
+            pass_args[unmatched_pos[0]] = v
+            used_kw.add(k)
+            unmatched_pos = unmatched_pos[1:]
+            if len(unmatched_pos) == 0:
+                break
+        else:
+            if unmatched_pos[0] < defaulted_pos:
+                unpassed = ", ".join(
+                    argspec.args[u] for u in unmatched_pos if u < defaulted_pos
+                )
+                raise TypeError(f"{fn.__name__}() cannot be passed {unpassed}.")
+    # Pass remaining kw args if they can be accepted.
+    pass_kw = {
+        k: v
+        for k, v in kwargs.items()
+        if k not in used_kw and (k in argspec.kwonlyargs or argspec.varargs is not None)
+    }
+    # Pass remaining positional args if they can be accepted.
+    if argspec.varargs is not None:
+        pass_args += list(args[used_pos:])
+    return fn(*pass_args, **pass_kw)
 
 class Trace(contextlib.AbstractContextManager):
     """
@@ -422,7 +534,6 @@ class Trace(contextlib.AbstractContextManager):
     def close(self):
         self.registered_hook.remove()
 
-
 class TraceDict(OrderedDict, contextlib.AbstractContextManager):
     """
     To retain the output of multiple named layers during the computation
@@ -494,7 +605,6 @@ class TraceDict(OrderedDict, contextlib.AbstractContextManager):
         for layer, trace in reversed(self.items()):
             trace.close()
 
-
 class StopForward(Exception):
     """
     If the only output needed from running a network is the retained
@@ -511,256 +621,13 @@ class StopForward(Exception):
     pass
 
 
-def recursive_copy(x, clone=None, detach=None, retain_grad=None):
-    """
-    Copies a reference to a tensor, or an object that contains tensors,
-    optionally detaching and cloning the tensor(s).  If retain_grad is
-    true, the original tensors are marked to have grads retained.
-    """
-    if not clone and not detach and not retain_grad:
-        return x
-    if isinstance(x, torch.Tensor):
-        if retain_grad:
-            if not x.requires_grad:
-                x.requires_grad = True
-            x.retain_grad()
-        elif detach:
-            x = x.detach()
-        if clone:
-            x = x.clone()
-        return x
-    # Only dicts, lists, and tuples (and subclasses) can be copied.
-    if isinstance(x, dict):
-        return type(x)({k: recursive_copy(v) for k, v in x.items()})
-    elif isinstance(x, (list, tuple)):
-        return type(x)([recursive_copy(v) for v in x])
-    else:
-        assert False, f"Unknown type {type(x)} cannot be broken into tensors."
 
 
-def subsequence(
-    sequential,
-    first_layer=None,
-    last_layer=None,
-    after_layer=None,
-    upto_layer=None,
-    single_layer=None,
-    share_weights=False,
-):
-    """
-    Creates a subsequence of a pytorch Sequential model, copying over
-    modules together with parameters for the subsequence.  Only
-    modules from first_layer to last_layer (inclusive) are included,
-    or modules between after_layer and upto_layer (exclusive).
-    Handles descent into dotted layer names as long as all references
-    are within nested Sequential models.
-
-    If share_weights is True, then references the original modules
-    and their parameters without copying them.  Otherwise, by default,
-    makes a separate brand-new copy.
-    """
-    assert (single_layer is None) or (
-        first_layer is last_layer is after_layer is upto_layer is None
-    )
-    if single_layer is not None:
-        first_layer = single_layer
-        last_layer = single_layer
-    first, last, after, upto = [
-        None if d is None else d.split(".")
-        for d in [first_layer, last_layer, after_layer, upto_layer]
-    ]
-    return hierarchical_subsequence(
-        sequential,
-        first=first,
-        last=last,
-        after=after,
-        upto=upto,
-        share_weights=share_weights,
-    )
 
 
-def hierarchical_subsequence(
-    sequential, first, last, after, upto, share_weights=False, depth=0
-):
-    """
-    Recursive helper for subsequence() to support descent into dotted
-    layer names.  In this helper, first, last, after, and upto are
-    arrays of names resulting from splitting on dots.  Can only
-    descend into nested Sequentials.
-    """
-    assert (last is None) or (upto is None)
-    assert (first is None) or (after is None)
-    if first is last is after is upto is None:
-        return sequential if share_weights else copy.deepcopy(sequential)
-    assert isinstance(sequential, torch.nn.Sequential), (
-        ".".join((first or last or after or upto)[:depth] or "arg") + " not Sequential"
-    )
-    including_children = (first is None) and (after is None)
-    included_children = OrderedDict()
-    # A = current level short name of A.
-    # AN = full name for recursive descent if not innermost.
-    (F, FN), (L, LN), (A, AN), (U, UN) = [
-        (d[depth], (None if len(d) == depth + 1 else d))
-        if d is not None
-        else (None, None)
-        for d in [first, last, after, upto]
-    ]
-    for name, layer in sequential._modules.items():
-        if name == F:
-            first = None
-            including_children = True
-        if name == A and AN is not None:  # just like F if not a leaf.
-            after = None
-            including_children = True
-        if name == U and UN is None:
-            upto = None
-            including_children = False
-        if including_children:
-            # AR = full name for recursive descent if name matches.
-            FR, LR, AR, UR = [
-                n if n is None or n[depth] == name else None for n in [FN, LN, AN, UN]
-            ]
-            chosen = hierarchical_subsequence(
-                layer,
-                first=FR,
-                last=LR,
-                after=AR,
-                upto=UR,
-                share_weights=share_weights,
-                depth=depth + 1,
-            )
-            if chosen is not None:
-                included_children[name] = chosen
-        if name == L:
-            last = None
-            including_children = False
-        if name == U and UN is not None:  # just like L if not a leaf.
-            upto = None
-            including_children = False
-        if name == A and AN is None:
-            after = None
-            including_children = True
-    for name in [first, last, after, upto]:
-        if name is not None:
-            raise ValueError("Layer %s not found" % ".".join(name))
-    # Omit empty subsequences except at the outermost level,
-    # where we should not return None.
-    if not len(included_children) and depth > 0:
-        return None
-    result = torch.nn.Sequential(included_children)
-    result.training = sequential.training
-    return result
 
 
-def set_requires_grad(requires_grad, *models):
-    """
-    Sets requires_grad true or false for all parameters within the
-    models passed.
-    """
-    for model in models:
-        if isinstance(model, torch.nn.Module):
-            for param in model.parameters():
-                param.requires_grad = requires_grad
-        elif isinstance(model, (torch.nn.Parameter, torch.Tensor)):
-            model.requires_grad = requires_grad
-        else:
-            assert False, "unknown type %r" % type(model)
 
 
-def get_module(model, name):
-    """
-    Finds the named module within the given model.
-    """
-    for n, m in model.named_modules():
-        if n == name:
-            return m
-    raise LookupError(name)
 
 
-def get_parameter(model, name):
-    """
-    Finds the named parameter within the given model.
-    """
-    for n, p in model.named_parameters():
-        if n == name:
-            return p
-    raise LookupError(name)
-
-
-def replace_module(model, name, new_module):
-    """
-    Replaces the named module within the given model.
-    """
-    if "." in name:
-        parent_name, attr_name = name.rsplit(".", 1)
-        model = get_module(model, parent_name)
-    # original_module = getattr(model, attr_name)
-    setattr(model, attr_name, new_module)
-
-
-def invoke_with_optional_args(fn, *args, **kwargs):
-    """
-    Invokes a function with only the arguments that it
-    is written to accept, giving priority to arguments
-    that match by-name, using the following rules.
-    (1) arguments with matching names are passed by name.
-    (2) remaining non-name-matched args are passed by order.
-    (3) extra caller arguments that the function cannot
-        accept are not passed.
-    (4) extra required function arguments that the caller
-        cannot provide cause a TypeError to be raised.
-    Ordinary python calling conventions are helpful for
-    supporting a function that might be revised to accept
-    extra arguments in a newer version, without requiring the
-    caller to pass those new arguments.  This function helps
-    support function callers that might be revised to supply
-    extra arguments, without requiring the callee to accept
-    those new arguments.
-    """
-    argspec = inspect.getfullargspec(fn)
-    pass_args = []
-    used_kw = set()
-    unmatched_pos = []
-    used_pos = 0
-    defaulted_pos = len(argspec.args) - (
-        0 if not argspec.defaults else len(argspec.defaults)
-    )
-    # Pass positional args that match name first, then by position.
-    for i, n in enumerate(argspec.args):
-        if n in kwargs:
-            pass_args.append(kwargs[n])
-            used_kw.add(n)
-        elif used_pos < len(args):
-            pass_args.append(args[used_pos])
-            used_pos += 1
-        else:
-            unmatched_pos.append(len(pass_args))
-            pass_args.append(
-                None if i < defaulted_pos else argspec.defaults[i - defaulted_pos]
-            )
-    # Fill unmatched positional args with unmatched keyword args in order.
-    if len(unmatched_pos):
-        for k, v in kwargs.items():
-            if k in used_kw or k in argspec.kwonlyargs:
-                continue
-            pass_args[unmatched_pos[0]] = v
-            used_kw.add(k)
-            unmatched_pos = unmatched_pos[1:]
-            if len(unmatched_pos) == 0:
-                break
-        else:
-            if unmatched_pos[0] < defaulted_pos:
-                unpassed = ", ".join(
-                    argspec.args[u] for u in unmatched_pos if u < defaulted_pos
-                )
-                raise TypeError(f"{fn.__name__}() cannot be passed {unpassed}.")
-    # Pass remaining kw args if they can be accepted.
-    pass_kw = {
-        k: v
-        for k, v in kwargs.items()
-        if k not in used_kw and (k in argspec.kwonlyargs or argspec.varargs is not None)
-    }
-    # Pass remaining positional args if they can be accepted.
-    if argspec.varargs is not None:
-        pass_args += list(args[used_pos:])
-    return fn(*pass_args, **pass_kw)
