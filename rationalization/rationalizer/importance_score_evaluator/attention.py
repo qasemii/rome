@@ -1,7 +1,8 @@
 import logging
 
+import math
 import torch
-from transformers import AutoModelWithLMHead, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from .base import BaseImportanceScoreEvaluator
 
 class AttentionImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
@@ -9,11 +10,11 @@ class AttentionImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
     
     """
 
-    def __init__(self, model: AutoModelWithLMHead, tokenizer: AutoTokenizer, attn_type: str) -> None:
+    def __init__(self, model: AutoModelForCausalLM, tokenizer: AutoTokenizer, attn_type: str) -> None:
         """Constructor
 
         Args:
-            model: A Huggingface AutoModelWithLMHead model
+            model: A Huggingface AutoModelForCausalLM model
             tokenizer: A Huggingface AutoTokenizer
             method: method
 
@@ -62,3 +63,30 @@ class AttentionImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
 
         self.important_score = torch.softmax(logit_importance_score, -1)
         return self.important_score
+
+    @torch.no_grad()
+    def rationalize(self, input_ids: torch.Tensor, target_id: torch.Tensor) -> torch.Tensor:
+        """Compute rational of a sequence on a target
+
+        Args:
+            input_ids: The sequence [batch, sequence]
+            target_id: The target [batch]
+
+        Return:
+            pos_top_n: rational position in the sequence [batch, rational_size]
+
+        """
+        batch_importance_score = self.evaluate(input_ids, target_id)
+
+        self.mean_important_score = torch.mean(batch_importance_score, dim=0)
+        
+        pos_sorted = torch.argsort(batch_importance_score, dim=-1, descending=True)
+
+        top_n = self.top_n
+
+        if top_n == 0:
+            top_n = int(math.ceil(self.top_n_ratio * input_ids.shape[-1]))
+            
+        pos_top_n = pos_sorted[:, :top_n]
+
+        return pos_top_n

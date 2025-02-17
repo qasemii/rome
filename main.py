@@ -119,64 +119,21 @@ def main():
         nltk.download('punkt_tab')
     elif args.method == 'random':
         pass
-    elif args.method == 'reagent':
-
-        token_sampler = POSTagTokenSampler(tokenizer=mt.tokenizer, device=mt.model.device)
-
-        stopping_condition_evaluator = TopKStoppingConditionEvaluator(
-            model=mt.model,
-            token_sampler=token_sampler,
-            top_k=stopping_top_k,
-            top_n=rational_size,
-            top_n_ratio=rational_size_ratio,
-            tokenizer=mt.tokenizer
-        )
-        importance_score_evaluator = DeltaProbImportanceScoreEvaluator(
-            model=mt.model,
-            tokenizer=mt.tokenizer,
-            token_replacer=UniformTokenReplacer(
-                token_sampler=token_sampler,
-                ratio=replacing
-            ),
-            stopping_condition_evaluator=stopping_condition_evaluator,
-            max_steps=max_step
-        )
-        rationalizer = AggregateRationalizer(
-            importance_score_evaluator=importance_score_evaluator,
-            batch_size=batch,
-            overlap_threshold=2,
-            overlap_strict_pos=True,
-            top_n=rational_size,
-            top_n_ratio=rational_size_ratio
-        )
     elif args.method == 'attention_last' or args.method == 'attention_rollout':
-        from rationalization.rationalizer.importance_score_evaluator.attention import \
-            AttentionImportanceScoreEvaluator
-        importance_score_evaluator = AttentionImportanceScoreEvaluator(
+        from rationalization.rationalizer.importance_score_evaluator.attention import AttentionImportanceScoreEvaluator
+        rationalizer = AttentionImportanceScoreEvaluator(
             model=mt.model,
             tokenizer=mt.tokenizer,
             attn_type=args.method.replace("attention_", "")
         )
-        from rationalization.rationalizer.sample_rationalizer import SampleRationalizer
-        rationalizer = SampleRationalizer(
-            importance_score_evaluator=importance_score_evaluator,
-            top_n=3,
-        )
     else:
         # assert args.method in ['integrated_gradients', 'input_x_gradient', 'attention', 'gradient_shap'] # input_x_gradient = signed in self written
-        from rationalization.rationalizer.importance_score_evaluator.inseq import \
-            InseqImportanceScoreEvaluator
-        importance_score_evaluator = InseqImportanceScoreEvaluator(
+        from rationalization.rationalizer.importance_score_evaluator.inseq import  InseqImportanceScoreEvaluator
+        rationalizer = InseqImportanceScoreEvaluator(
             model=mt.model,
             tokenizer=mt.tokenizer,
-            method=args.method,  # integrated_gradients input_x_gradient attention
-            attribute_params={
-            }
-        )
-        from rationalization.rationalizer.sample_rationalizer import SampleRationalizer
-        rationalizer = SampleRationalizer(
-            importance_score_evaluator=importance_score_evaluator,
-            top_n=3,
+            method=args.method, 
+            attribute_params={}
         )
 
     # init evaluator
@@ -195,23 +152,17 @@ def main():
         idx = data['id']
 
         input_ids = mt.tokenizer(data["prompt"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
-        attention_mask = mt.tokenizer(data["prompt"], return_tensors='pt')['attention_mask'][0].to(mt.model.device)
-
-        generated_ids = mt.model.generate(input_ids=torch.unsqueeze(input_ids, 0),
-                                          attention_mask=torch.unsqueeze(attention_mask, 0),
-                                          max_new_tokens=args.max_new_tokens,
-                                          do_sample=False,
-                                          pad_token_id=pad_token_id)[0]
-        target_id = generated_ids[-1]
+        target_id = mt.tokenizer(" "+data["target"], return_tensors='pt')['input_ids'][0].to(mt.model.device)
         # generated_texts = mt.tokenizer.decode(generated_ids)
         # print(f'generated full sequence --> {generated_texts}')
 
         # Gemma and Llama add [bos] token which should be exclude from input prompt when
         if args.method == 'noiser':
             ers = get_rationales(mt,
-                                    data["prompt"],
-                                    norm=args.norm,
-                                    mode=args.mode,)
+                                 data["prompt"],
+                                 norm=args.norm,
+                                 mode=args.mode
+                                 )
             scores = ers['token_scores']
         elif args.method == 'random':
             scores = torch.softmax(
@@ -249,10 +200,6 @@ def main():
         except:
             print(f"Unable to get the score for {idx}")
             continue
-
-            # scores_dict[f'{target_pos}'] = scores
-
-
 
         results.append({'id': data["id"],
                         'prompt': data["prompt"],

@@ -1,7 +1,8 @@
 import logging
 
+import math
 import torch
-from transformers import AutoModelWithLMHead, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from .base import BaseImportanceScoreEvaluator
 
 import inseq
@@ -11,11 +12,11 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
     
     """
 
-    def __init__(self, model: AutoModelWithLMHead, tokenizer: AutoTokenizer, method: str, attribute_params: dict) -> None:
+    def __init__(self, model: AutoModelForCausalLM, tokenizer: AutoTokenizer, method: str, attribute_params: dict) -> None:
         """Constructor
 
         Args:
-            model: A Huggingface AutoModelWithLMHead model
+            model: A Huggingface AutoModelForCausalLM model
             tokenizer: A Huggingface AutoTokenizer
             method: method
 
@@ -24,12 +25,10 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         super().__init__(model, tokenizer)
 
         self.attribution_model = inseq.load_model(self.model.name_or_path, method)
-        self.attribution_model.tokenizer.pad_token = self.attribution_model.tokenizer.eos_token
-        self.attribution_model.tokenizer.add_special_tokens({'bos_token': '<bos>'})
-        self.tokenizer.add_special_tokens({'bos_token': '<bos>'})
         self.attribute_params = attribute_params
 
-
+        # self.attribution_model.tokenizer.pad_token = self.attribution_model.tokenizer.eos_token
+        # self.tokenizer.add_special_tokens({'eos_token': '<eos>'})
     def evaluate(self, input_ids: torch.Tensor, target_id: torch.Tensor) -> torch.Tensor:
         """Evaluate importance score of input sequence
 
@@ -75,3 +74,31 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
 
         self.important_score = attrs_batch
         return self.important_score
+
+
+    @torch.no_grad()
+    def rationalize(self, input_ids: torch.Tensor, target_id: torch.Tensor) -> torch.Tensor:
+        """Compute rational of a sequence on a target
+
+        Args:
+            input_ids: The sequence [batch, sequence]
+            target_id: The target [batch]
+
+        Return:
+            pos_top_n: rational position in the sequence [batch, rational_size]
+
+        """
+        batch_importance_score = self.evaluate(input_ids, target_id)
+
+        self.mean_important_score = torch.mean(batch_importance_score, dim=0)
+        
+        pos_sorted = torch.argsort(batch_importance_score, dim=-1, descending=True)
+
+        top_n = self.top_n
+
+        if top_n == 0:
+            top_n = int(math.ceil(self.top_n_ratio * input_ids.shape[-1]))
+            
+        pos_top_n = pos_sorted[:, :top_n]
+
+        return pos_top_n
