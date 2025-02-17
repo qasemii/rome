@@ -20,13 +20,13 @@ from transformers import (
 )
 from hf_olmo import OLMoForCausalLM
 
-from util import nethook
+from .nethook import nethook
 
 import nltk
 nltk.download('punkt')
 
 def make_noisy_embeddings(
-    mt,  # The model
+    model,  # The model
     inp,  # A set of inputs
     tokens_to_mix,  # Range of tokens to corrupt (begin, end)
     norm='inf',
@@ -63,16 +63,16 @@ def make_noisy_embeddings(
     prng = lambda *shape: rs.randn(*shape)/bound(shape[-1])
     noise_fn = lambda noise: scale * noise
 
-    embed_layername = layername(mt.model)
+    embed_layername = layername(model)
 
     def patch_rep(x):
         # If requested, we corrupt a range of token embeddings on batch items x[1:]
         b, e = tokens_to_mix
 
         ## Replace the target token embeddings with [MASK] embeddings ##########################################
-        # mt.tokenizer.add_special_tokens({"mask_token": "[MASK]"})
-        # mask_id = mt.tokenizer.mask_token_id
-        # mask_embedding = mt.model.get_input_embeddings().weight[mask_id]
+        # tokenizer.add_special_tokens({"mask_token": "[MASK]"})
+        # mask_id = tokenizer.mask_token_id
+        # mask_embedding = model.get_input_embeddings().weight[mask_id]
         # x[1:, b:e] = mask_embedding
 
         # Add noise to target token
@@ -82,11 +82,11 @@ def make_noisy_embeddings(
 
     # With the patching rules defined, run the patched model in inference.
     with torch.no_grad(), nethook.TraceDict(
-        mt.model,
+        model,
         [embed_layername],
         edit_output=patch_rep,
     ):
-        outputs_exp = mt.model(**inp)
+        outputs_exp = model(**inp)
 
     # We report softmax probabilities for the answers_t token predictions of interest.
     probs = torch.softmax(outputs_exp.logits[1:, -1, :], dim=1).mean(dim=0)
@@ -207,34 +207,34 @@ def find_token_range(tokenizer, token_array, substring, start):
             break
     return (tok_start, tok_end)
 
-def collect_token_range(mt, prompt, tokens):
-    inp = make_inputs(mt.tokenizer, [prompt]) # NOTE: Mistral remove space before tokens !!!
+def collect_token_range(tokenizer, prompt, tokens):
+    inp = make_inputs(tokenizer, [prompt]) # NOTE: Mistral remove space before tokens !!!
 
     # Finding the range for each single token
     ranges = []
     start = 0
     for token in tokens:
-        e_range = find_token_range(mt.tokenizer, inp["input_ids"][0], token, start=start)
+        e_range = find_token_range(tokenizer, inp["input_ids"][0], token, start=start)
         ranges.append(e_range)
         start += len(token)  # Optimized this line by using '+=' instead of 'start = start + len(token)'
 
     return ranges
 
-def predict_token(mt, prompts, topk=None):
-    inp = make_inputs(mt.tokenizer, prompts)
-    logits = mt.model(**inp)["logits"]
+def predict_token(model, tokenizer, prompts, topk=None):
+    inp = make_inputs(tokenizer, prompts)
+    logits = model(**inp)["logits"]
     probs = torch.softmax(logits[:, -1, :], dim=-1)  # Correct slicing and dimension
 
     if topk:
         probs, preds = torch.topk(probs, topk, sorted=True, dim=-1)
         result = [
-            (mt.tokenizer.decode(pred.item()), prob.item())
+            (tokenizer.decode(pred.item()), prob.item())
             for pred, prob in zip(preds.squeeze(0), probs.squeeze(0))  # Squeeze batch dimension for single prompt
         ]
 
     else:
         probs, preds = torch.max(probs, dim=-1, keepdim=True)  # Keep dims for consistency
-        result = (mt.tokenizer.decode(preds.squeeze(0).item()), probs.squeeze(0).item())
+        result = (tokenizer.decode(preds.squeeze(0).item()), probs.squeeze(0).item())
 
     return result
 
@@ -246,13 +246,13 @@ def predict_from_input(model, inp):
 
 
 
-def get_rationales(mt, prompt, norm='inf', mode='prob'):
+def get_rationales(model, tokenizer, prompt, norm='inf', mode='prob'):
     # Use single prompt instead of 11
-    device = mt.model.device
-    inp = mt.tokenizer(prompt)
+    device = model.device
+    inp = tokenizer(prompt, return_tensors='pt')
 
     with torch.no_grad():
-        logits = mt.model(**inp)["logits"]
+        logits = model(**inp)["logits"]
         probs = torch.softmax(logits[:, -1, :], dim=1)
 
     probs, preds = torch.max(probs, dim=-1, keepdim=True)  # Keep dims for consistency
@@ -262,7 +262,7 @@ def get_rationales(mt, prompt, norm='inf', mode='prob'):
     tokens = nltk.word_tokenize(prompt)
     tokens = ['"' if token in ['``', "''"] else token for token in tokens]
     tokens = check_whitespace(prompt, tokens)
-    tokens_range = collect_token_range(mt, prompt, tokens)
+    tokens_range = collect_token_range(tokenizer, prompt, tokens)
 
     # Initialize on correct device
     tokens_score = torch.zeros(len(inp['input_ids'][0]), device=device)
@@ -274,7 +274,7 @@ def get_rationales(mt, prompt, norm='inf', mode='prob'):
         for _ in range(10):  # with 10 iteration the precision would be 2e-10 ~= 0.001
             k = (low + high) / 2
             with torch.no_grad():
-                low_scores = make_noisy_embeddings(mt, inp, norm=norm, tokens_to_mix=t_range, scale=k)
+                low_scores = make_noisy_embeddings(model, inp, norm=norm, tokens_to_mix=t_range, scale=k)
             prob = low_scores[answer_id].item()
 
             sorted_indices = torch.argsort(low_scores, descending=True)

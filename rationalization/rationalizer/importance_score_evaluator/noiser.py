@@ -5,7 +5,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from .base import BaseImportanceScoreEvaluator
 
-from utils import *
+from .utils import *
 class NoiserImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
     """Importance Score Evaluator
     
@@ -23,7 +23,7 @@ class NoiserImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
 
         super().__init__(model, tokenizer)
         self.norm = norm
-        self.model = mode
+        self.mode = mode
 
     
 
@@ -43,6 +43,7 @@ class NoiserImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         target_text = [self.tokenizer.decode(i) for i in torch.cat([input_ids, torch.unsqueeze(target_id, 0)], dim=1)]
 
         self.important_score = get_rationales(self.model,
+                                              self.tokenizer,
                                               prompt=input_text,
                                               norm=self.norm,
                                               mode=self.model,
