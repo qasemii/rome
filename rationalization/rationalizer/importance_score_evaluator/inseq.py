@@ -94,11 +94,4 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         
         pos_sorted = torch.argsort(batch_importance_score, dim=-1, descending=True)
 
-        top_n = self.top_n
-
-        if top_n == 0:
-            top_n = int(math.ceil(self.top_n_ratio * input_ids.shape[-1]))
-            
-        pos_top_n = pos_sorted[:, :top_n]
-
-        return pos_top_n
+        return pos_sorted
