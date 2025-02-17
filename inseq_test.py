@@ -1,8 +1,8 @@
 import inseq
 import torch
 
-model_name = "meta-llama/Llama-3.1-8B"
-# model_name = "google/gemma-2-2b"
+# model_name = "meta-llama/Llama-3.1-8B"
+model_name = "google/gemma-2-2b"
 
 model = inseq.load_model(model_name, "attention")
 out = model.attribute(
