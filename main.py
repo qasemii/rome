@@ -79,9 +79,22 @@ def main():
         torch_dtype=torch.float16,
     )
 
+    special_tokens_dict = dict()
+    if mt.tokenizer.pad_token is None:
+        mt.tokenizer.add_special_tokens({'pad_token': '<pad>'})
+        special_tokens_dict["pad_token"] = mt.tokenizer.eos_token
     if mt.tokenizer.bos_token is None:
-       mt.tokenizer.bos_token = "<bos>"
-       mt.tokenizer.bos_token_id = mt.tokenizer.convert_tokens_to_ids("<bos>")
+        mt.tokenizer.add_special_tokens({'bos_token': '<bos>'})
+        special_tokens_dict["bos_token"] = mt.tokenizer.bos_token
+    if mt.tokenizer.eos_token is None:
+        mt.tokenizer.add_special_tokens({'eos_token': '<eos>'})
+        special_tokens_dict["eos_token"] = mt.tokenizer.eos_token
+    if mt.tokenizer.unk_token is None:
+        mt.tokenizer.add_special_tokens({'unk_token': '<unk>'})
+        special_tokens_dict["unk_token"] = mt.tokenizer.unk_token
+    # if mt.tokenizer.bos_token is None:
+    #    mt.tokenizer.bos_token = "<bos>"
+    #    mt.tokenizer.bos_token_id = mt.tokenizer.convert_tokens_to_ids("<bos>")
     
     pad_token_id = mt.tokenizer.pad_token_id if mt.tokenizer.pad_token_id is not None else mt.tokenizer.eos_token_id
 
@@ -133,7 +146,7 @@ def main():
             model=mt.model,
             tokenizer=mt.tokenizer,
             method=args.method, 
-            attribute_params={}
+            attribute_params=special_tokens_dict
         )
 
     # init evaluator
