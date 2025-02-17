@@ -25,8 +25,6 @@ class NoiserImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         self.norm = norm
         self.mode = mode
 
-    
-
     def evaluate(self, input_ids: torch.Tensor, target_id: torch.Tensor) -> torch.Tensor:
         """Evaluate importance score of input sequence
 
@@ -46,7 +44,7 @@ class NoiserImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
                                               self.tokenizer,
                                               prompt=input_text,
                                               norm=self.norm,
-                                              mode=self.model,
+                                              mode=self.mode,
                                               )
         return self.important_score
 
