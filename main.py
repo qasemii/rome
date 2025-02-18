@@ -67,25 +67,6 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     model = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
 
-    special_tokens_dict = dict()
-    if tokenizer.pad_token is None:
-        tokenizer.add_special_tokens({'pad_token': '<pad>'})
-        special_tokens_dict["pad_token"] = tokenizer.eos_token
-    if tokenizer.bos_token is None:
-        tokenizer.add_special_tokens({'bos_token': '<bos>'})
-        special_tokens_dict["bos_token"] = tokenizer.bos_token
-    if tokenizer.eos_token is None:
-        tokenizer.add_special_tokens({'eos_token': '<eos>'})
-        special_tokens_dict["eos_token"] = tokenizer.eos_token
-    if tokenizer.unk_token is None:
-        tokenizer.add_special_tokens({'unk_token': '<unk>'})
-        special_tokens_dict["unk_token"] = tokenizer.unk_token
-    # if tokenizer.bos_token is None:
-    #    tokenizer.bos_token = "<bos>"
-    #    tokenizer.bos_token_id = tokenizer.convert_tokens_to_ids("<bos>")
-    
-    # pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
-    breakpoint()
     print(f"Loading {args.dataset} dataset ...")
     if args.dataset == "Knowns":
         dataset = KnownsDataset(DATA_DIR)
@@ -97,13 +78,13 @@ def main():
     else:
         raise ValueError
     
-    # # Filter dataset to only include examples where the predicted token matches the target
-    # print(f"Filtering dataset ...")
-    # dataset = [
-    #     d for d in dataset
-    #     if predict_token(model, tokenizer, d['prompt']).strip() == d['target']
-    # ]
-    # print(f"Filtered dataset to {len(dataset)} examples")
+    # Filter dataset to only include examples where the predicted token matches the target
+    print(f"Filtering dataset ...")
+    dataset = [
+        d for d in dataset
+        if predict_token(model, tokenizer, d['prompt']).strip() == d['target']
+    ]
+    print(f"Filtered dataset to {len(dataset)} examples")
 
     if args.method == 'noiser':
         nltk.download('punkt_tab')
@@ -130,7 +111,7 @@ def main():
             model=model,
             tokenizer=tokenizer,
             method=args.method, 
-            attribute_params=special_tokens_dict
+            attribute_params={}
         )
 
     # init evaluator
@@ -203,12 +184,6 @@ def main():
 
         random_soft_ns.append(torch.mean(torch.tensor(r_soft_ns)).item())
         random_soft_nc.append(torch.mean(torch.tensor(r_soft_nc)).item())
-
-    source_soft_ns = torch.tensor(source_soft_ns)
-    source_soft_nc = torch.tensor(source_soft_nc)
-
-    random_soft_ns = torch.tensor(random_soft_ns)
-    random_soft_nc = torch.tensor(random_soft_nc)
 
     soft_ns = torch.log(torch.mean(torch.tensor(source_soft_ns)) / torch.mean(torch.tensor(random_soft_ns)))
     soft_nc = torch.log(torch.mean(torch.tensor(source_soft_nc)) / torch.mean(torch.tensor(random_soft_nc)))
