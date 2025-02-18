@@ -132,7 +132,7 @@ def main():
         attention_mask = tokenizer(data["prompt"], return_tensors='pt')['attention_mask'][0].to(device)
         generated_ids = model.generate(input_ids=torch.unsqueeze(input_ids, 0),
                                        attention_mask= torch.unsqueeze(attention_mask, 0),
-                                       pad_token_id=tokenizer.pad_token_id,
+                                       pad_token_id=tokenizer.eos_token_id,
                                        max_new_tokens=args.max_new_tokens, 
                                        do_sample=False)[0]
         
