@@ -2,7 +2,7 @@ import torch
 from transformers import AutoModelWithLMHead, AutoTokenizer
 from typing_extensions import override
 
-from rationalization.rationalizer.utils.traceable import Traceable
+from .utils import Traceable
 
 
 class BaseImportanceScoreEvaluator(Traceable):
