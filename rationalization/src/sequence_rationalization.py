@@ -5,7 +5,7 @@ import argparse
 import torch
 import json
 from rationalization.rationalizer.aggregate_rationalizer import AggregateRationalizer
-from rationalization.rationalizer.importance_score_evaluator.delta_prob import DeltaProbImportanceScoreEvaluator
+from importance_score_evaluator.delta_prob import DeltaProbImportanceScoreEvaluator
 from rationalization.rationalizer.stopping_condition_evaluator.top_k import TopKStoppingConditionEvaluator
 from rationalization.rationalizer.token_replacement.token_replacer.uniform import UniformTokenReplacer
 from rationalization.rationalizer.token_replacement.token_sampler.postag import POSTagTokenSampler
@@ -156,7 +156,7 @@ if args.method == 'ours':
     )
 
 elif args.method == 'attention_last' or args.method == 'attention_rollout':
-    from rationalization.rationalizer.importance_score_evaluator.attention import AttentionImportanceScoreEvaluator
+    from importance_score_evaluator.attention import AttentionImportanceScoreEvaluator
     importance_score_evaluator = AttentionImportanceScoreEvaluator(
             model=model,
             tokenizer=tokenizer,
@@ -183,7 +183,7 @@ elif args.method == 'attention_last' or args.method == 'attention_rollout':
 #     )
 else: 
     # assert args.method in ['integrated_gradients', 'input_x_gradient', 'attention', 'gradient_shap'] # input_x_gradient = signed in self written
-    from rationalization.rationalizer.importance_score_evaluator.inseq import InseqImportanceScoreEvaluator
+    from importance_score_evaluator.inseq import InseqImportanceScoreEvaluator
     importance_score_evaluator = InseqImportanceScoreEvaluator(
         model=model, 
         tokenizer=tokenizer, 

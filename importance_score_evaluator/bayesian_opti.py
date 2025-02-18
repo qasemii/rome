@@ -7,8 +7,8 @@ from botorch.models.fully_bayesian import SaasFullyBayesianSingleTaskGP
 from botorch.optim import optimize_acqf
 from transformers import AutoModelWithLMHead, AutoTokenizer
 
-from ..stopping_condition_evaluator.base import StoppingConditionEvaluator
-from ..token_replacement.token_replacer.ranking import RankingTokenReplacer
+from rationalization.rationalizer.stopping_condition_evaluator.base import StoppingConditionEvaluator
+from rationalization.rationalizer.token_replacement.token_replacer.ranking import RankingTokenReplacer
 from .base import BaseImportanceScoreEvaluator
 
 

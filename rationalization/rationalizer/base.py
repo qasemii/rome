@@ -1,4 +1,4 @@
-from .importance_score_evaluator.base import BaseImportanceScoreEvaluator
+from importance_score_evaluator.base import BaseImportanceScoreEvaluator
 from .utils.traceable import Traceable
 
 

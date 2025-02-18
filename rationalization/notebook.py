@@ -1,6 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from rationalizer.aggregate_rationalizer import AggregateRationalizer
-from rationalizer.importance_score_evaluator.delta_prob import DeltaProbImportanceScoreEvaluator
+from importance_score_evaluator.delta_prob import DeltaProbImportanceScoreEvaluator
 from rationalizer.stopping_condition_evaluator.top_k import TopKStoppingConditionEvaluator
 from rationalizer.token_replacement.token_replacer.uniform import UniformTokenReplacer
 from rationalizer.token_replacement.token_sampler.postag import POSTagTokenSampler

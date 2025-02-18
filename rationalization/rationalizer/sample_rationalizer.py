@@ -3,7 +3,7 @@ import math
 
 import torch
 from .base import BaseRationalizer
-from .importance_score_evaluator.base import BaseImportanceScoreEvaluator
+from importance_score_evaluator.base import BaseImportanceScoreEvaluator
 from typing_extensions import override
 
 
@@ -83,7 +83,7 @@ def main():
     from token_replacement.token_sampler.uniform import UniformTokenSampler
     from transformers import AutoModelWithLMHead, AutoTokenizer
 
-    from rationalization.rationalizer.importance_score_evaluator.delta_prob import \
+    from importance_score_evaluator.delta_prob import \
         DeltaProbImportanceScoreEvaluator
     from utils.serializing import serialize_rational
 

@@ -88,7 +88,7 @@ def main():
 
     if args.method == 'noiser':
         nltk.download('punkt_tab')
-        from rationalization.rationalizer.importance_score_evaluator.noiser import  NoiserImportanceScoreEvaluator
+        from importance_score_evaluator.noiser import  NoiserImportanceScoreEvaluator
         rationalizer = NoiserImportanceScoreEvaluator(
             model=model,
             tokenizer=tokenizer,
@@ -98,7 +98,7 @@ def main():
     elif args.method == 'random':
         pass
     elif args.method == 'attention_last' or args.method == 'attention_rollout':
-        from rationalization.rationalizer.importance_score_evaluator.attention import AttentionImportanceScoreEvaluator
+        from importance_score_evaluator.attention import AttentionImportanceScoreEvaluator
         rationalizer = AttentionImportanceScoreEvaluator(
             model=model,
             tokenizer=tokenizer,
@@ -106,7 +106,7 @@ def main():
         )
     else: #['integrated_gradients', 'input_x_gradient', 'attention', 'gradient_shap']
         # assert args.method in ['integrated_gradients', 'input_x_gradient', 'attention', 'gradient_shap'] # input_x_gradient = signed in self written
-        from rationalization.rationalizer.importance_score_evaluator.inseq import  InseqImportanceScoreEvaluator
+        from importance_score_evaluator.inseq import  InseqImportanceScoreEvaluator
         rationalizer = InseqImportanceScoreEvaluator(
             model=model,
             tokenizer=tokenizer,

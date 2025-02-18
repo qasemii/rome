@@ -160,7 +160,7 @@ def main():
 
         evaluator_type = rationalization_config["importance_score_evaluator"]["replacing"]["optimization"]["type"]
         if evaluator_type == 'delta_probability':
-            from rationalizer.importance_score_evaluator.delta_prob import \
+            from importance_score_evaluator.delta_prob import \
                 DeltaProbImportanceScoreEvaluator
             from rationalizer.token_replacement.token_replacer.uniform import \
                 UniformTokenReplacer
@@ -178,7 +178,7 @@ def main():
                 max_steps=max_steps
             )
         elif evaluator_type == 'bayesian_optimization':
-            from rationalizer.importance_score_evaluator.bayesian_opti import \
+            from importance_score_evaluator.bayesian_opti import \
                 BayesianOptimizationImportanceScoreEvaluator
             from rationalizer.token_replacement.token_replacer.ranking import \
                 RankingTokenReplacer
@@ -200,7 +200,7 @@ def main():
             raise ValueError(f"Invalid evaluator-type: {evaluator_type}")
     
     elif importance_score_evaluator_type == "attention":
-        from rationalizer.importance_score_evaluator.attention import \
+        from importance_score_evaluator.attention import \
             AttentionImportanceScoreEvaluator
         importance_score_evaluator = AttentionImportanceScoreEvaluator(
             model=model,
@@ -208,7 +208,7 @@ def main():
             attn_type=rationalization_config["importance_score_evaluator"]["attention"]["type"]
         )
     elif importance_score_evaluator_type == "gradient":
-        from rationalizer.importance_score_evaluator.grad import \
+        from importance_score_evaluator.grad import \
             GradientImportanceScoreEvaluator
         importance_score_evaluator = GradientImportanceScoreEvaluator(
             model=model,
@@ -216,7 +216,7 @@ def main():
             grad_type=rationalization_config["importance_score_evaluator"]["gradient"]["type"]
         )
     elif importance_score_evaluator_type == "inseq":
-        from rationalizer.importance_score_evaluator.inseq import \
+        from importance_score_evaluator.inseq import \
             InseqImportanceScoreEvaluator
         importance_score_evaluator = InseqImportanceScoreEvaluator(
             model=model,

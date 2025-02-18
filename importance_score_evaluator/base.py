@@ -2,9 +2,9 @@ import torch
 from transformers import AutoModelWithLMHead, AutoTokenizer
 from typing_extensions import override
 
-from ..stopping_condition_evaluator.base import StoppingConditionEvaluator
-from ..token_replacement.token_replacer.base import TokenReplacer
-from ..utils.traceable import Traceable
+from rationalization.rationalizer.stopping_condition_evaluator.base import StoppingConditionEvaluator
+from rationalization.rationalizer.token_replacement.token_replacer.base import TokenReplacer
+from rationalization.rationalizer.utils.traceable import Traceable
 
 
 class BaseImportanceScoreEvaluator(Traceable):
