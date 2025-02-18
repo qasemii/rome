@@ -42,8 +42,8 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
 
         """
         ## for gpt j ===> \n token id is 198  \t 197  , space 220, \n\n token id is 
-        input_text = [ self.tokenizer.decode(i) for i in input_ids]
-        target_text = [ self.tokenizer.decode(i) for i in torch.cat([input_ids, torch.unsqueeze(target_id, 0)], dim=1)]
+        input_text = [ self.tokenizer.decode(i, skip_special_tokens=True) for i in input_ids]
+        target_text = [ self.tokenizer.decode(i, skip_special_tokens=True) for i in torch.cat([input_ids, torch.unsqueeze(target_id, 0)], dim=1)]
 
 
         # print( )
