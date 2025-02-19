@@ -71,6 +71,14 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     model = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
 
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    if eos_token_id is None:
+        eos_token_id = tokenizer.pad_token_id
+    if tokenizer.unk_token_id is None:
+        tokenizer.unk_token_id = tokenizer.eos_token_id
+    
+
     print(f"Loading {args.dataset} dataset ...")
     if args.dataset == "Knowns":
         dataset = KnownsDataset(DATA_DIR)
