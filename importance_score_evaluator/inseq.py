@@ -24,11 +24,11 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
 
         super().__init__(model, tokenizer)
 
-        self.attribution_model = inseq.load_model(self.model.name_or_path, method, **attribute_params)
+        self.attribution_model = inseq.load_model(model=self.model, 
+                                                  tokenizer=self.tokenizer, 
+                                                  attribution_method=method, 
+                                                  **attribute_params)
         self.method = method
-
-        if self.attribution_model.tokenizer.pad_token is None:
-            self.attribution_model.tokenizer.pad_token = self.tokenizer.eos_token
 
     def evaluate(self, input_ids: torch.Tensor, target_id: torch.Tensor) -> torch.Tensor:
         """Evaluate importance score of input sequence
