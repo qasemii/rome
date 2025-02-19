@@ -91,9 +91,11 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         batch_importance_score = self.evaluate(input_ids, target_id)
 
         self.mean_important_score = torch.mean(batch_importance_score, dim=0)
+        
         # normalizing the methods that are not normalized
-        if torch.sum(self.mean_important_score)!=1:
-            self.mean_important_score = self.mean_important_score/torch.sum(self.mean_important_score)
+        if self.method=='occlusion':
+            self.mean_important_score /= torch.sum(self.mean_important_score)
+        
         pos_sorted = torch.argsort(batch_importance_score, dim=-1, descending=True)
 
         return pos_sorted
