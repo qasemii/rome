@@ -31,6 +31,10 @@ torch.set_grad_enabled(False)
 
 def predict_token(model, tokenizer, prompt):
     inp = tokenizer(prompt, return_tensors='pt').to(device)
+    # The following only is True for OLMo models
+    if 'token_type_ids' in inp.keys():
+        inp.pop('token_type_ids')
+
     logits = model(**inp)["logits"]
     probs = torch.softmax(logits[:, -1, :], dim=-1) 
     probs, preds = torch.max(probs, dim=-1, keepdim=True)  # Keep dims for consistency
