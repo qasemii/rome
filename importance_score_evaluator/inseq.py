@@ -24,8 +24,8 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
 
         super().__init__(model, tokenizer)
 
-        self.attribution_model = inseq.load_model(self.model.name_or_path, method)
-        self.attribute_params = attribute_params
+        self.attribution_model = inseq.load_model(self.model.name_or_path, method, **attribute_params)
+        self.method = method
 
         if self.attribution_model.tokenizer.pad_token is None:
             self.attribution_model.tokenizer.pad_token = self.tokenizer.eos_token
@@ -65,7 +65,6 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         attr_res = self.attribution_model.attribute(
             input_text,
             target_text,
-            **self.attribute_params
         )
         
         # [[ full_length, attr_length(1) ]]
@@ -92,7 +91,9 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         batch_importance_score = self.evaluate(input_ids, target_id)
 
         self.mean_important_score = torch.mean(batch_importance_score, dim=0)
-        
+        # normalizing the methods that are not normalized
+        if torch.sum(self.mean_important_score)!=1:
+            self.mean_important_score = self.mean_important_score/torch.sum(self.mean_important_score)
         pos_sorted = torch.argsort(batch_importance_score, dim=-1, descending=True)
 
         return pos_sorted
