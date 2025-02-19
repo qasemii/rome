@@ -134,6 +134,10 @@ def get_rationales(model, tokenizer, prompt, norm='inf', mode='prob'):
     # Use single prompt instead of 11
     device = model.device
     inp = tokenizer(prompt*11, return_tensors='pt').to(device)
+    
+    # The following only is True for OLMo models
+    if 'token_type_ids' in inp.keys():
+        inp.pop('token_type_ids')
 
     with torch.no_grad():
         logits = model(**inp)["logits"]
