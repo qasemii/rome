@@ -26,7 +26,6 @@ device = "cuda"
 random.seed(42)
 torch.manual_seed(42)
 torch.use_deterministic_algorithms(True, warn_only=True)
-torch.set_grad_enabled(False)
 
 
 def predict_token(model, tokenizer, prompt):
