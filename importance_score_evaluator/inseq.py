@@ -77,7 +77,7 @@ class InseqImportanceScoreEvaluator(BaseImportanceScoreEvaluator):
         return self.important_score
 
 
-    @torch.no_grad()
+    # @torch.no_grad()
     def rationalize(self, input_ids: torch.Tensor, target_id: torch.Tensor) -> torch.Tensor:
         """Compute rational of a sequence on a target
 
