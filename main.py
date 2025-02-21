@@ -73,6 +73,9 @@ def main():
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
         # model.config.pad_token_id = tokenizer.eos_token_id
+    if tokenizer.bos_token_id is None: #This is for OLMo models
+        tokenizer.bos_token_id = tokenizer.pad_token_id
+        # model.config.bos_token_id = tokenizer.pad_token_id
     
 
     print(f"Loading {args.dataset} dataset ...")
